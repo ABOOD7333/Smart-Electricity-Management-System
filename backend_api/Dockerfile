@@ -28,6 +28,10 @@ COPY --from=builder /usr/src/app/dist ./dist
 
 # إنشاء مستخدم غير مسؤول (non-root) للأمان والحماية
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# إنشاء مجلدات الرفع وتغيير ملكية مجلد العمل للمستخدم الآمن لتفادي خطأ الصلاحيات (EACCES)
+RUN mkdir -p /usr/src/app/uploads/readings && chown -R appuser:appgroup /usr/src/app
+
 USER appuser
 
 EXPOSE 3000
