@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
+    "prestart": "ts-node src/database/run_migration.ts",
     "start": "node dist/server.js",
     "db:schema": "psql -U postgres -d sems_db -f src/database/schema.sql"
   },
