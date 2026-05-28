@@ -1,22 +1,36 @@
-# Use official Node.js Alpine image for a smaller footprint
-FROM node:20-alpine
+# Stage 1: Build stage
+FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /usr/src/app
 
-# Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production
 
-# Copy application source code
+# تثبيت كافة الاعتماديات بما فيها أدوات التطوير وTypeScript للبناء
+RUN npm ci
+
 COPY . .
 
-# Create a non-root user for security
+# بناء مشروع TypeScript (ترجمة ملفات src إلى dist)
+RUN npm run build
+
+# Stage 2: Production runtime stage
+FROM node:20-alpine
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+
+# تثبيت اعتماديات الإنتاج فقط للحفاظ على حجم الحاوية صغيراً وآمناً
+RUN npm ci --only=production
+
+# نسخ الملفات المترجمة من مرحلة البناء
+COPY --from=builder /usr/src/app/dist ./dist
+
+# إنشاء مستخدم غير مسؤول (non-root) للأمان والحماية
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
-# Expose port
 EXPOSE 3000
 
-# Start command
-CMD ["node", "app.js"]
+# تشغيل الخادم من الملف المترجم dist/server.js
+CMD ["node", "dist/server.js"]
