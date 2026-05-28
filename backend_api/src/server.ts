@@ -1,5 +1,6 @@
 import app from './app';
 import pool from './database/connection';
+import { runMigration } from './database/run_migration';
 
 const PORT = process.env.PORT || 3000;
 
@@ -8,6 +9,9 @@ const startServer = async () => {
     // التحقق من الاتصال بقاعدة البيانات
     await pool.query('SELECT 1');
     console.log('✅ Database connection verified');
+
+    // تشغيل هجرات قاعدة البيانات تلقائياً عند التشغيل (مثالي لمنصات مثل Railway)
+    await runMigration(false);
 
     app.listen(PORT, () => {
       console.log('');
