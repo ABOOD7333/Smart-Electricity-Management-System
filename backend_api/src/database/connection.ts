@@ -14,7 +14,14 @@ const dbConfig: PoolConfig = {
   connectionTimeoutMillis: 2000,
 };
 
-const pool = new Pool(dbConfig);
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1')
+        ? false
+        : { rejectUnauthorized: false }
+    })
+  : new Pool(dbConfig);
 
 // التحقق من الاتصال عند بدء التشغيل
 pool.on('connect', () => {
