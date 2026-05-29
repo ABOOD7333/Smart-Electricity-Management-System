@@ -23,6 +23,9 @@ dotenv.config();
 
 const app: Application = express();
 
+// Trust proxy headers (e.g., X-Forwarded-For) from Railway load balancers
+app.set('trust proxy', 1);
+
 // ===========================
 // الحماية والإعدادات العامة
 // ===========================
