@@ -595,13 +595,6 @@ export const registerCompany = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    // ب. التحقق من عدم تكرار اسم المستخدم للمشرف
-    const existAdmin = await query('SELECT user_id FROM users WHERE username = $1', [admin_username]);
-    if (existAdmin.rows.length > 0) {
-      res.status(409).json({ success: false, message: `اسم المستخدم "${admin_username}" محجوز، يرجى اختيار اسم آخر` });
-      return;
-    }
-
     // جـ. إدراج الشركة الجديدة
     const companyResult = await query(
       `INSERT INTO companies (company_name, company_code, email, phone_number, address, license_number, is_active)
@@ -614,23 +607,101 @@ export const registerCompany = async (req: Request, res: Response): Promise<void
 
     // د. إنشاء الأدوار الافتراضية للشركة الجديدة
     const defaultRoles = [
-      { name: 'admin',       name_ar: 'مشرف النظام',    perms: '{"all": true}' },
-      { name: 'customer',    name_ar: 'مشترك',            perms: '{"bills": true, "profile": true}' },
-      { name: 'technician',  name_ar: 'فني',              perms: '{"readings": true, "maintenance": true}' },
-      { name: 'accountant',  name_ar: 'محاسب',            perms: '{"bills": true, "payments": true}' },
-      { name: 'reader',      name_ar: 'قارئ عدادات',     perms: '{"readings": true}' },
+      { name: 'admin',       desc: 'مدير النظام بكامل الصلاحيات' },
+      { name: 'customer',    desc: 'مشترك لعرض الفواتير والقراءات وتقديم الشكاوى' },
+      { name: 'technician',  desc: 'فني ميداني لأخذ القراءات وتصوير العدادات' },
+      { name: 'cashier',     desc: 'أمين صندوق لاستلام الفواتير والمدفوعات' },
+      { name: 'supervisor',  desc: 'مشرف مالي وإداري للمناطق' },
+      { name: 'accountant',  desc: 'محاسب مالي للشركة' },
+      { name: 'reader',      desc: 'قارئ عدادات ميداني' },
     ];
 
     for (const role of defaultRoles) {
       await query(
-        `INSERT INTO roles (role_name, role_name_ar, permissions, company_id)
-         VALUES ($1, $2, $3::jsonb, $4)
-         ON CONFLICT DO NOTHING`,
-        [role.name, role.name_ar, role.perms, newCompanyId]
+        `INSERT INTO roles (role_name, description, company_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (role_name, company_id) DO NOTHING`,
+        [role.name, role.desc, newCompanyId]
       );
     }
 
-    // هـ. جلب دور المشرف
+    // هـ. إدخال صلاحيات الأدوار للشركة الجديدة
+    // 1. Admin gets all permissions
+    await query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.role_id, p.permission_id
+       FROM roles r
+       CROSS JOIN permissions p
+       WHERE r.role_name = 'admin' AND r.company_id = $1
+       ON CONFLICT DO NOTHING`,
+      [newCompanyId]
+    );
+
+    // 2. Technician gets partial permissions
+    await query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.role_id, p.permission_id
+       FROM roles r
+       CROSS JOIN permissions p
+       WHERE r.role_name = 'technician' AND r.company_id = $1 
+         AND p.permission_key IN ('read:customers', 'read:meters', 'read:readings', 'write:readings', 'read:complaints')
+       ON CONFLICT DO NOTHING`,
+      [newCompanyId]
+    );
+
+    // 3. Cashier gets partial permissions
+    await query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.role_id, p.permission_id
+       FROM roles r
+       CROSS JOIN permissions p
+       WHERE r.role_name = 'cashier' AND r.company_id = $1
+         AND p.permission_key IN ('read:customers', 'read:bills', 'read:payments', 'write:payments')
+       ON CONFLICT DO NOTHING`,
+      [newCompanyId]
+    );
+
+    // 4. Supervisor gets partial permissions
+    await query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.role_id, p.permission_id
+       FROM roles r
+       CROSS JOIN permissions p
+       WHERE r.role_name = 'supervisor' AND r.company_id = $1
+         AND p.permission_key IN (
+           'read:users', 'read:customers', 'write:customers', 'read:meters', 'write:meters',
+           'read:readings', 'write:readings', 'approve:readings', 'read:bills', 'write:bills',
+           'read:payments', 'read:complaints', 'resolve:complaints', 'read:ai_reports'
+         )
+       ON CONFLICT DO NOTHING`,
+      [newCompanyId]
+    );
+
+    // و. إنشاء المناطق الافتراضية للشركة الجديدة
+    await query(
+      `INSERT INTO zones (zone_name, zone_code, company_id)
+       VALUES 
+         ('المنطقة الرئيسية', 'MAIN', $1),
+         ('منطقة الشمال', 'NORTH', $1),
+         ('منطقة الجنوب', 'SOUTH', $1),
+         ('منطقة الشرق', 'EAST', $1)
+       ON CONFLICT (zone_code, company_id) DO NOTHING`,
+      [newCompanyId]
+    );
+
+    // ز. إنشاء تعريفات الأسعار الافتراضية للشركة الجديدة
+    await query(
+      `INSERT INTO tariff_rates (customer_type, min_kwh, max_kwh, rate_per_kwh, effective_from, company_id)
+       VALUES
+         ('residential', 0, 200, 30, '2025-01-01', $1),
+         ('residential', 201, NULL, 50, '2025-01-01', $1),
+         ('commercial', 0, NULL, 265, '2025-01-01', $1),
+         ('industrial', 0, NULL, 200, '2025-01-01', $1)
+       ON CONFLICT DO NOTHING`,
+      [newCompanyId]
+    );
+
+    // حـ. جلب دور المشرف للشركة الجديدة
     const adminRoleResult = await query(
       `SELECT role_id FROM roles WHERE role_name = 'admin' AND company_id = $1`,
       [newCompanyId]
@@ -641,7 +712,7 @@ export const registerCompany = async (req: Request, res: Response): Promise<void
     }
     const adminRoleId = adminRoleResult.rows[0].role_id;
 
-    // و. إنشاء حساب المشرف
+    // ط. إنشاء حساب المشرف للشركة الجديدة
     const adminPasswordHash = await bcrypt.hash(admin_password, 12);
     const adminUserResult = await query(
       `INSERT INTO users (full_name, username, phone_number, password_hash, role_id, company_id)
