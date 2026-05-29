@@ -54,6 +54,11 @@ BEGIN
         ALTER TABLE zones ALTER COLUMN company_id SET NOT NULL;
         CREATE INDEX idx_zones_company ON zones(company_id);
     END IF;
+    -- Remove the unique constraint on zone_code and make it unique PER COMPANY instead!
+    ALTER TABLE zones DROP CONSTRAINT IF EXISTS zones_zone_code_key;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'zones_zone_code_company_key') THEN
+        ALTER TABLE zones ADD CONSTRAINT zones_zone_code_company_key UNIQUE (zone_code, company_id);
+    END IF;
 
     -- B. Alter ROLES
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='roles' AND column_name='company_id') THEN
@@ -77,6 +82,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='customer_id') THEN
         ALTER TABLE users ADD COLUMN customer_id UUID REFERENCES customers(customer_id) ON DELETE SET NULL;
         CREATE INDEX idx_users_customer ON users(customer_id);
+    END IF;
+
+    -- Remove the unique constraint on username and email and make them unique PER COMPANY instead!
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key;
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'users_username_company_key') THEN
+        ALTER TABLE users ADD CONSTRAINT users_username_company_key UNIQUE (username, company_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'users_email_company_key') THEN
+        ALTER TABLE users ADD CONSTRAINT users_email_company_key UNIQUE (email, company_id);
     END IF;
 
     -- Ensure 'customer' role exists for each company
@@ -157,5 +172,117 @@ BEGIN
         ALTER TABLE notifications ALTER COLUMN company_id SET NOT NULL;
         CREATE INDEX idx_notifications_company ON notifications(company_id);
     END IF;
+
+    -- ============================================================
+    -- SEEDING DATA FOR MULTI-TENANCY
+    -- ============================================================
+
+    -- 1. Ensure all standard permissions exist
+    INSERT INTO permissions (permission_key, description) VALUES
+        ('read:users', 'عرض المستخدمين والموظفين'),
+        ('write:users', 'إضافة وتعديل المستخدمين'),
+        ('read:customers', 'عرض المشتركين'),
+        ('write:customers', 'إضافة وتعديل المشتركين'),
+        ('read:meters', 'عرض العدادات'),
+        ('write:meters', 'إضافة وتعديل العدادات'),
+        ('read:readings', 'عرض قراءات العدادات'),
+        ('write:readings', 'تسجيل قراءات العدادات'),
+        ('approve:readings', 'اعتماد أو رفض قراءات العدادات'),
+        ('read:bills', 'عرض الفواتير'),
+        ('write:bills', 'إصدار وتعديل الفواتير'),
+        ('read:payments', 'عرض المقبوضات والمدفوعات'),
+        ('write:payments', 'تسجيل عمليات الدفع والمقبوضات'),
+        ('read:complaints', 'عرض شكاوى المشتركين'),
+        ('resolve:complaints', 'معالجة وحل شكاوى المشتركين'),
+        ('read:ai_reports', 'عرض تحليلات الذكاء الاصطناعي وتوقعات الاستهلاك'),
+        ('read:audit_logs', 'عرض سجل العمليات والرقابة')
+    ON CONFLICT (permission_key) DO NOTHING;
+
+    -- 2. Ensure standard roles exist for each company
+    INSERT INTO roles (role_name, description, company_id)
+    SELECT r_name, r_desc, c.company_id
+    FROM companies c
+    CROSS JOIN (VALUES 
+        ('admin', 'مدير النظام بكامل الصلاحيات'),
+        ('supervisor', 'مشرف مالي وإداري للمناطق'),
+        ('technician', 'فني ميداني لأخذ القراءات وتصوير العدادات'),
+        ('cashier', 'أمين صندوق لاستلام الفواتير والمدفوعات'),
+        ('customer', 'مشترك لعرض الفواتير والقراءات وتقديم الشكاوى')
+    ) AS r(r_name, r_desc)
+    ON CONFLICT (role_name, company_id) DO NOTHING;
+
+    -- 3. Ensure role_permissions mappings are created for each company
+    -- Admin role: full permissions
+    INSERT INTO role_permissions (role_id, permission_id)
+    SELECT r.role_id, p.permission_id
+    FROM roles r
+    CROSS JOIN permissions p
+    WHERE r.role_name = 'admin'
+    ON CONFLICT DO NOTHING;
+
+    -- Technician role: partial permissions
+    INSERT INTO role_permissions (role_id, permission_id)
+    SELECT r.role_id, p.permission_id
+    FROM roles r
+    CROSS JOIN permissions p
+    WHERE r.role_name = 'technician' AND p.permission_key IN ('read:customers', 'read:meters', 'read:readings', 'write:readings', 'read:complaints')
+    ON CONFLICT DO NOTHING;
+
+    -- Cashier role: partial permissions
+    INSERT INTO role_permissions (role_id, permission_id)
+    SELECT r.role_id, p.permission_id
+    FROM roles r
+    CROSS JOIN permissions p
+    WHERE r.role_name = 'cashier' AND p.permission_key IN ('read:customers', 'read:bills', 'read:payments', 'write:payments')
+    ON CONFLICT DO NOTHING;
+
+    -- Supervisor role: partial permissions
+    INSERT INTO role_permissions (role_id, permission_id)
+    SELECT r.role_id, p.permission_id
+    FROM roles r
+    CROSS JOIN permissions p
+    WHERE r.role_name = 'supervisor' AND p.permission_key IN (
+        'read:users', 'read:customers', 'write:customers', 'read:meters', 'write:meters',
+        'read:readings', 'write:readings', 'approve:readings', 'read:bills', 'write:bills',
+        'read:payments', 'read:complaints', 'resolve:complaints', 'read:ai_reports'
+    )
+    ON CONFLICT DO NOTHING;
+
+    -- 4. Ensure admin user exists for each company
+    INSERT INTO users (full_name, username, email, password_hash, role_id, company_id)
+    SELECT 
+        'مدير النظام (' || c.company_code || ')',
+        'admin',
+        'admin@' || lower(c.company_code) || '.sems.local',
+        '$2b$12$R.S6w8Gk9cQZ1d6kK/W7fO8wXW301h9H3p9.r0Z5E9dKx5v7yv5mO', -- Admin@123456
+        r.role_id,
+        c.company_id
+    FROM companies c
+    JOIN roles r ON r.company_id = c.company_id AND r.role_name = 'admin'
+    ON CONFLICT (username, company_id) DO NOTHING;
+
+    -- 5. Ensure default zones exist for each company
+    INSERT INTO zones (zone_name, zone_code, company_id)
+    SELECT z_name, z_code, c.company_id
+    FROM companies c
+    CROSS JOIN (VALUES
+        ('المنطقة الرئيسية', 'MAIN'),
+        ('منطقة الشمال', 'NORTH'),
+        ('منطقة الجنوب', 'SOUTH'),
+        ('منطقة الشرق', 'EAST')
+    ) AS z(z_name, z_code)
+    ON CONFLICT (zone_code, company_id) DO NOTHING;
+
+    -- 6. Ensure tariff rates exist for each company
+    INSERT INTO tariff_rates (customer_type, min_kwh, max_kwh, rate_per_kwh, effective_from, company_id)
+    SELECT t.customer_type, t.min_kwh, t.max_kwh, t.rate_per_kwh, t.effective_from, c.company_id
+    FROM companies c
+    CROSS JOIN (VALUES
+        ('residential'::customer_type, 0::numeric, 200::numeric, 30::numeric, '2025-01-01'::date),
+        ('residential'::customer_type, 201::numeric, NULL::numeric, 50::numeric, '2025-01-01'::date),
+        ('commercial'::customer_type, 0::numeric, NULL::numeric, 265::numeric, '2025-01-01'::date),
+        ('industrial'::customer_type, 0::numeric, NULL::numeric, 200::numeric, '2025-01-01'::date)
+    ) AS t(customer_type, min_kwh, max_kwh, rate_per_kwh, effective_from)
+    WHERE NOT EXISTS (SELECT 1 FROM tariff_rates tr WHERE tr.company_id = c.company_id);
 
 END $$;`;
