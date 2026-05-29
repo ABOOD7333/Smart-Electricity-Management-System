@@ -2,6 +2,9 @@ export const migrationSql = `-- ================================================
 -- Migration Script for Phase 8: Multi-Tenant & Company Isolation
 -- ============================================================
 
+-- Enable UUID extension if not enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. Create companies table
 CREATE TABLE IF NOT EXISTS companies (
     company_id      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
