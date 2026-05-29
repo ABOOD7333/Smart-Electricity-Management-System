@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -25,7 +26,9 @@ const app: Application = express();
 // ===========================
 // الحماية والإعدادات العامة
 // ===========================
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts & styles in web app
+}));
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3001'],
@@ -51,9 +54,15 @@ import { tenantContext } from './middleware/tenant.middleware';
 app.use(tenantContext);
 
 // ===========================
+// خدمة الواجهة الأمامية (Web App)
+// ===========================
+const publicPath = path.join(__dirname, '../../public');
+app.use(express.static(publicPath));
+
+// ===========================
 // المسارات الصحية (Health Check)
 // ===========================
-app.get('/', (req, res) => {
+app.get('/api/status', (req, res) => {
   res.json({
     success: true,
     message: '⚡ Smart Electricity Management System API',
@@ -87,6 +96,11 @@ app.use('/api/sync',       syncRoutes);
 // ===========================
 // معالجة الأخطاء
 // ===========================
+// Serve index.html for any unknown route (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
+
 app.use(notFound);
 app.use(errorHandler);
 
