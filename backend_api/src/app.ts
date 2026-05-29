@@ -98,8 +98,11 @@ app.use('/api/sync',       syncRoutes);
 // ===========================
 // معالجة الأخطاء
 // ===========================
-// Serve index.html for any unknown route (SPA fallback)
-app.get('*', (req, res) => {
+// SPA fallback: serve index.html for all non-API routes
+// Note: app.use() without path works for all routes in Express 5
+app.use((req, res, next) => {
+  // Only serve index.html for non-API requests
+  if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(publicPath, 'index.html'));
 });
 
