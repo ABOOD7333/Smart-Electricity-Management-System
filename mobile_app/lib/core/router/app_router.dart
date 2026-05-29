@@ -5,6 +5,10 @@ import '../network/api_client.dart';
 
 // Placeholder screen imports (will create these screen classes soon)
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/register_company_screen.dart';
+import '../../features/auth/presentation/screens/verify_otp_screen.dart';
 import '../../features/customer/presentation/screens/customer_dashboard.dart';
 import '../../features/technician/presentation/screens/technician_dashboard.dart';
 import '../../features/technician/presentation/screens/meter_reading_screen.dart';
@@ -20,6 +24,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/register-company',
+        builder: (context, state) => const RegisterCompanyScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/verify-otp',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          final phone = extra['phone'] as String;
+          final meterNumber = extra['meter_number'] as String;
+          final companyCode = extra['company_code'] as String?;
+          return VerifyOtpScreen(
+            phone: phone,
+            meterNumber: meterNumber,
+            companyCode: companyCode,
+          );
+        },
       ),
       GoRoute(
         path: '/customer',
@@ -43,6 +73,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
 
 // A splash gate to check user auth token and role and route accordingly
 class AuthSplashGate extends ConsumerWidget {

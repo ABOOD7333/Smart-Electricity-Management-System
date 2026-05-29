@@ -311,7 +311,7 @@ class _MeterReadingScreenState extends ConsumerState<MeterReadingScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.darkCardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,10 +339,10 @@ class _MeterReadingScreenState extends ConsumerState<MeterReadingScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: _latitude != null ? AppTheme.successColor.withOpacity(0.1) : AppTheme.warningColor.withOpacity(0.1),
+                    color: _latitude != null ? AppTheme.successColor.withValues(alpha: 0.1) : AppTheme.warningColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _latitude != null ? AppTheme.successColor.withOpacity(0.3) : AppTheme.warningColor.withOpacity(0.3),
+                      color: _latitude != null ? AppTheme.successColor.withValues(alpha: 0.3) : AppTheme.warningColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -435,7 +435,7 @@ class _MeterReadingScreenState extends ConsumerState<MeterReadingScreen> {
                       color: AppTheme.darkCardBg,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _capturedImagePath != null ? AppTheme.successColor : Colors.white.withOpacity(0.1),
+                        color: _capturedImagePath != null ? AppTheme.successColor : Colors.white.withValues(alpha: 0.1),
                         width: 1.5,
                       ),
                     ),
@@ -509,7 +509,7 @@ class _MeterReadingScreenState extends ConsumerState<MeterReadingScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 6,
-                    shadowColor: AppTheme.primaryColor.withOpacity(0.3),
+                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
                   ),
                   child: isSubmitting
                       ? const SizedBox(

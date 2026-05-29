@@ -1,3 +1,16 @@
+buildscript {
+    ext.kotlin_version = '1.8.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -11,6 +24,47 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    def configureNamespace = { proj ->
+        if (proj.hasProperty("android")) {
+            try {
+                proj.android.compileSdkVersion = 34
+            } catch (Exception e) {
+                try {
+                    proj.android.compileSdk = 34
+                } catch (Exception ex) {}
+            }
+            
+            if (proj.android.namespace == null) {
+                def manifestFile = proj.file("src/main/AndroidManifest.xml")
+                if (manifestFile.exists()) {
+                    try {
+                        def manifestContent = manifestFile.getText()
+                        def matcher = manifestContent =~ /package="([^"]+)"/
+                        if (matcher.find()) {
+                            proj.android.namespace = matcher.group(1)
+                        } else {
+                            proj.android.namespace = "com.fallback.${proj.name.replaceAll(/[^a-zA-Z0-9_]/, '_')}"
+                        }
+                    } catch (Exception e) {
+                        proj.android.namespace = "com.fallback.${proj.name.replaceAll(/[^a-zA-Z0-9_]/, '_')}"
+                    }
+                } else {
+                    proj.android.namespace = "com.fallback.${proj.name.replaceAll(/[^a-zA-Z0-9_]/, '_')}"
+                }
+            }
+        }
+    }
+
+    if (project.state.executed) {
+        configureNamespace(project)
+    } else {
+        project.afterEvaluate { proj ->
+            configureNamespace(proj)
+        }
+    }
 }
 
 tasks.register("clean", Delete) {

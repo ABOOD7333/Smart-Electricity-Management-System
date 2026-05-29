@@ -34,7 +34,7 @@ class AppTheme {
       cardTheme: CardTheme(
         color: lightCardBg,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.05),
+        shadowColor: Colors.black.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       textTheme: GoogleFonts.cairoTextTheme().copyWith(
@@ -81,7 +81,7 @@ class AppTheme {
       cardTheme: CardTheme(
         color: darkCardBg,
         elevation: 4,
-        shadowColor: Colors.black.withOpacity(0.2),
+        shadowColor: Colors.black.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       textTheme: GoogleFonts.cairoTextTheme().copyWith(

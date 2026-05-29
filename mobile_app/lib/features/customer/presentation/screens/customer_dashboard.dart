@@ -218,7 +218,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
@@ -243,7 +243,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF363795).withOpacity(0.3),
+                              color: const Color(0xFF363795).withValues(alpha: 0.3),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             )
@@ -292,7 +292,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.15),
+                                    color: Colors.white.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
@@ -320,7 +320,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  side: BorderSide(color: Colors.white.withOpacity(0.05)),
+                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
                                 ),
                               ),
                               icon: const Icon(Icons.campaign_rounded, color: AppTheme.accentColor, size: 20),
@@ -348,7 +348,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 elevation: 4,
-                                shadowColor: AppTheme.primaryColor.withOpacity(0.3),
+                                shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
                               ),
                               icon: const Icon(Icons.payment_rounded, size: 20),
                               label: const Text(
@@ -377,7 +377,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                         decoration: BoxDecoration(
                           color: AppTheme.darkCardBg,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.05)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                         ),
                         child: LineChart(
                           LineChartData(
@@ -418,7 +418,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                                 dotData: const FlDotData(show: false),
                                 belowBarData: BarAreaData(
                                   show: true,
-                                  color: AppTheme.primaryColor.withOpacity(0.15),
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
                                 ),
                               ),
                             ],
@@ -456,7 +456,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                             decoration: BoxDecoration(
                               color: AppTheme.darkCardBg,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withOpacity(0.05)),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -486,7 +486,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: isPaid ? AppTheme.successColor.withOpacity(0.1) : AppTheme.dangerColor.withOpacity(0.1),
+                                        color: isPaid ? AppTheme.successColor.withValues(alpha: 0.1) : AppTheme.dangerColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(

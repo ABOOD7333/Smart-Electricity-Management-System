@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../data/models/user_model.dart';
+import '../../data/models/company_model.dart';
 
 // State class for Authentication
 class AuthState {
@@ -67,7 +68,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(String username, String password, {String? companyCode}) async {
     state = state.copyWith(isLoading: true);
     try {
       final response = await _dio.post(
@@ -76,6 +77,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'username': username,
           'password': password,
         },
+        options: Options(
+          headers: {
+            if (companyCode != null) 'X-Company-Code': companyCode,
+          },
+        ),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -132,4 +138,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final dio = ref.watch(dioProvider);
   return AuthNotifier(dio, ref);
+});
+
+// Providers for fetching all electricity companies
+final companiesProvider = FutureProvider<List<CompanyModel>>((ref) async {
+  final dio = ref.watch(dioProvider);
+  try {
+    final response = await dio.get(ApiConstants.companies);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = response.data['data'] ?? [];
+      return data.map((json) => CompanyModel.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    // Fallback default list if API fails
+    return [
+      CompanyModel(companyId: 'bpower-uuid', companyName: 'شركة الطاقة الرئيسية B.POWER', companyCode: 'BPOWER'),
+      CompanyModel(companyId: 'noor-uuid', companyName: 'شركة نور الكهربائية', companyCode: 'NOOR'),
+      CompanyModel(companyId: 'aman-uuid', companyName: 'شركة أمان للطاقة', companyCode: 'AMAN'),
+    ];
+  }
 });

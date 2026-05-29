@@ -546,3 +546,159 @@ export const getMe = async (req: any, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };
+
+// ============================================================
+// 8. تسجيل شركة كهرباء جديدة (Register New Company)
+// ============================================================
+export const registerCompany = async (req: Request, res: Response): Promise<void> => {
+  const {
+    company_name,
+    company_code,
+    email,
+    phone_number,
+    address,
+    license_number,
+    admin_full_name,
+    admin_username,
+    admin_password,
+  } = req.body;
+
+  // التحقق من الحقول الإلزامية
+  if (!company_name || !company_code || !admin_full_name || !admin_username || !admin_password || !phone_number) {
+    res.status(400).json({
+      success: false,
+      message: 'يرجى إدخال جميع الحقول الإلزامية: اسم الشركة، الرمز، رقم الهاتف، وبيانات المشرف',
+    });
+    return;
+  }
+
+  const normalizedCode = company_code.trim().toUpperCase();
+
+  if (!/^[A-Z0-9_]{3,20}$/.test(normalizedCode)) {
+    res.status(400).json({
+      success: false,
+      message: 'رمز الشركة يجب أن يكون بالإنجليزية والأرقام فقط (3-20 حرف)',
+    });
+    return;
+  }
+
+  if (admin_password.length < 8) {
+    res.status(400).json({ success: false, message: 'كلمة مرور المشرف يجب أن تكون 8 أحرف على الأقل' });
+    return;
+  }
+
+  try {
+    // أ. التحقق من عدم تكرار رمز الشركة
+    const existCode = await query('SELECT company_id FROM companies WHERE company_code = $1', [normalizedCode]);
+    if (existCode.rows.length > 0) {
+      res.status(409).json({ success: false, message: `رمز الشركة "${normalizedCode}" مستخدم بالفعل، يرجى اختيار رمز آخر` });
+      return;
+    }
+
+    // ب. التحقق من عدم تكرار اسم المستخدم للمشرف
+    const existAdmin = await query('SELECT user_id FROM users WHERE username = $1', [admin_username]);
+    if (existAdmin.rows.length > 0) {
+      res.status(409).json({ success: false, message: `اسم المستخدم "${admin_username}" محجوز، يرجى اختيار اسم آخر` });
+      return;
+    }
+
+    // جـ. إدراج الشركة الجديدة
+    const companyResult = await query(
+      `INSERT INTO companies (company_name, company_code, email, phone_number, address, license_number, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+       RETURNING company_id, company_name, company_code`,
+      [company_name.trim(), normalizedCode, email || null, phone_number.trim(), address || null, license_number || null]
+    );
+    const newCompany = companyResult.rows[0];
+    const newCompanyId = newCompany.company_id;
+
+    // د. إنشاء الأدوار الافتراضية للشركة الجديدة
+    const defaultRoles = [
+      { name: 'admin',       name_ar: 'مشرف النظام',    perms: '{"all": true}' },
+      { name: 'customer',    name_ar: 'مشترك',            perms: '{"bills": true, "profile": true}' },
+      { name: 'technician',  name_ar: 'فني',              perms: '{"readings": true, "maintenance": true}' },
+      { name: 'accountant',  name_ar: 'محاسب',            perms: '{"bills": true, "payments": true}' },
+      { name: 'reader',      name_ar: 'قارئ عدادات',     perms: '{"readings": true}' },
+    ];
+
+    for (const role of defaultRoles) {
+      await query(
+        `INSERT INTO roles (role_name, role_name_ar, permissions, company_id)
+         VALUES ($1, $2, $3::jsonb, $4)
+         ON CONFLICT DO NOTHING`,
+        [role.name, role.name_ar, role.perms, newCompanyId]
+      );
+    }
+
+    // هـ. جلب دور المشرف
+    const adminRoleResult = await query(
+      `SELECT role_id FROM roles WHERE role_name = 'admin' AND company_id = $1`,
+      [newCompanyId]
+    );
+    if (adminRoleResult.rows.length === 0) {
+      res.status(500).json({ success: false, message: 'فشل إنشاء دور المشرف للشركة' });
+      return;
+    }
+    const adminRoleId = adminRoleResult.rows[0].role_id;
+
+    // و. إنشاء حساب المشرف
+    const adminPasswordHash = await bcrypt.hash(admin_password, 12);
+    const adminUserResult = await query(
+      `INSERT INTO users (full_name, username, phone_number, password_hash, role_id, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING user_id, full_name, username`,
+      [admin_full_name.trim(), admin_username.trim(), phone_number.trim(), adminPasswordHash, adminRoleId, newCompanyId]
+    );
+    const adminUser = adminUserResult.rows[0];
+
+    // ز. توليد التوكن للدخول التلقائي بعد التسجيل
+    const tokenPayload = {
+      user_id: adminUser.user_id,
+      username: adminUser.username,
+      role: 'admin',
+      company_id: newCompanyId,
+    };
+    const accessToken = jwt.sign(
+      tokenPayload,
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as jwt.SignOptions
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `تم تسجيل شركة "${newCompany.company_name}" بنجاح! يمكنك الآن تسجيل الدخول بحساب المشرف`,
+      data: {
+        company: {
+          company_id: newCompanyId,
+          company_name: newCompany.company_name,
+          company_code: newCompany.company_code,
+        },
+        admin: {
+          user_id: adminUser.user_id,
+          full_name: adminUser.full_name,
+          username: adminUser.username,
+        },
+        access_token: accessToken,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Register company error:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم أثناء تسجيل الشركة' });
+  }
+};
+
+// ============================================================
+// 9. جلب جميع شركات الكهرباء التجارية النشطة (Get Active Companies)
+// ============================================================
+export const getCompanies = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      'SELECT company_id, company_name, company_code FROM companies WHERE is_active = TRUE ORDER BY company_name ASC'
+    );
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('❌ Get companies error:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم أثناء جلب شركات الكهرباء' });
+  }
+};
+

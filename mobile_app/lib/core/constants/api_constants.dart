@@ -1,11 +1,12 @@
 class ApiConstants {
   // Base URL (Uses 10.0.2.2 for Android Emulator to access localhost of host machine)
   // For web or physical device testing, update this to your local IP or backend URL
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'https://smart-electricity-management-system-production.up.railway.app/api';
 
   // Auth Endpoints
   static const String login = '/auth/login';
   static const String registerCustomer = '/auth/register-customer';
+  static const String companies = '/auth/companies';
 
   // Customer Endpoints
   static const String customerDashboard = '/customers/dashboard';
