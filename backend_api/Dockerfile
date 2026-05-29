@@ -26,6 +26,9 @@ RUN npm ci --only=production
 # نسخ الملفات المترجمة من مرحلة البناء
 COPY --from=builder /usr/src/app/dist ./dist
 
+# نسخ مجلد الواجهة الأمامية (Web App)
+COPY --from=builder /usr/src/app/public ./public
+
 # إنشاء مستخدم غير مسؤول (non-root) للأمان والحماية
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

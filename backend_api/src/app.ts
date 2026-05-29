@@ -56,7 +56,9 @@ app.use(tenantContext);
 // ===========================
 // خدمة الواجهة الأمامية (Web App)
 // ===========================
-const publicPath = path.join(__dirname, '../../public');
+// __dirname in production = /usr/src/app/dist
+// public folder is at   = /usr/src/app/public
+const publicPath = path.join(__dirname, '../public');
 app.use(express.static(publicPath));
 
 // ===========================
