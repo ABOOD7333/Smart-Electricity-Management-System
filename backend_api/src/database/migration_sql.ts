@@ -34,11 +34,12 @@ DO $$
 DECLARE
     default_company_id UUID;
 BEGIN
-    -- Get or insert default company
+    -- Get or insert default company (BPOWER) and reliably retrieve its ID
     INSERT INTO companies (company_name, company_code, domain_name)
     VALUES ('شركة الطاقة الرئيسية B.POWER', 'BPOWER', 'bpower.platform.com')
-    ON CONFLICT (company_code) DO UPDATE SET company_name = EXCLUDED.company_name
-    RETURNING company_id INTO default_company_id;
+    ON CONFLICT (company_code) DO UPDATE SET company_name = EXCLUDED.company_name;
+    -- Always fetch the id separately (RETURNING may not work with DO UPDATE in all cases)
+    SELECT company_id INTO default_company_id FROM companies WHERE company_code = 'BPOWER';
 
     -- Also insert additional companies for the multi-tenant system
     INSERT INTO companies (company_name, company_code, domain_name)
