@@ -8,7 +8,8 @@ import {
   resetPassword, 
   changePassword, 
   getMe,
-  getCompanies
+  getCompanies,
+  resetAdminCredentials
 } from '../controllers/auth.controller';
 import { requireTenantAuth } from '../middleware/tenant.middleware';
 
@@ -40,5 +41,8 @@ router.get('/me', requireTenantAuth, getMe);
 
 // PUT /api/auth/change-password - تغيير كلمة المرور للمستخدم المسجل (محمي)
 router.put('/change-password', requireTenantAuth, changePassword);
+
+// POST /api/auth/reset-admin-credentials - إعادة تعيين بيانات مدير شركة (مفتاح سري)
+router.post('/reset-admin-credentials', resetAdminCredentials);
 
 export default router;

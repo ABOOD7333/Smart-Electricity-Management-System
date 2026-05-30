@@ -773,3 +773,99 @@ export const getCompanies = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+// ============================================================
+// 10. إعادة تعيين بيانات مدير الشركة (Admin Reset - محمي بمفتاح سري)
+// ============================================================
+export const resetAdminCredentials = async (req: Request, res: Response): Promise<void> => {
+  const MASTER_KEY = process.env.MASTER_RESET_KEY || 'SEMS_MASTER_2026_RESET';
+  const { master_key, updates } = req.body;
+
+  if (master_key !== MASTER_KEY) {
+    res.status(403).json({ success: false, message: 'مفتاح إعادة التعيين غير صحيح' });
+    return;
+  }
+
+  if (!Array.isArray(updates) || updates.length === 0) {
+    res.status(400).json({ success: false, message: 'يرجى إرسال قائمة التحديثات' });
+    return;
+  }
+
+  try {
+    const results = [];
+
+    for (const update of updates) {
+      const { company_code, new_username, new_password } = update;
+
+      if (!company_code || !new_username || !new_password) {
+        results.push({ company_code, success: false, message: 'بيانات ناقصة' });
+        continue;
+      }
+
+      // جلب معرف الشركة
+      const compResult = await query(
+        'SELECT company_id FROM companies WHERE company_code = $1 AND is_active = TRUE',
+        [company_code.toUpperCase()]
+      );
+
+      if (compResult.rows.length === 0) {
+        results.push({ company_code, success: false, message: 'الشركة غير موجودة' });
+        continue;
+      }
+
+      const company_id = compResult.rows[0].company_id;
+
+      // جلب دور المدير
+      const roleResult = await query(
+        'SELECT role_id FROM roles WHERE role_name = $1 AND company_id = $2',
+        ['admin', company_id]
+      );
+
+      if (roleResult.rows.length === 0) {
+        results.push({ company_code, success: false, message: 'دور المدير غير موجود للشركة' });
+        continue;
+      }
+
+      const admin_role_id = roleResult.rows[0].role_id;
+
+      // تشفير كلمة المرور الجديدة
+      const new_hash = await bcrypt.hash(new_password, 12);
+
+      // تحديث المستخدم الإداري (role=admin) في الشركة
+      const updateResult = await query(
+        `UPDATE users SET username = $1, password_hash = $2, is_active = TRUE
+         WHERE role_id = $3 AND company_id = $4
+         RETURNING user_id, username, full_name`,
+        [new_username, new_hash, admin_role_id, company_id]
+      );
+
+      if (updateResult.rows.length === 0) {
+        // إنشاء مستخدم مدير جديد إذا لم يكن موجوداً
+        const insertResult = await query(
+          `INSERT INTO users (full_name, username, password_hash, role_id, company_id, is_active)
+           VALUES ($1, $2, $3, $4, $5, TRUE)
+           RETURNING user_id, username, full_name`,
+          [`مدير ${company_code}`, new_username, new_hash, admin_role_id, company_id]
+        );
+        results.push({
+          company_code,
+          success: true,
+          message: 'تم إنشاء مدير جديد بنجاح',
+          user: insertResult.rows[0]
+        });
+      } else {
+        results.push({
+          company_code,
+          success: true,
+          message: 'تم تحديث بيانات المدير بنجاح',
+          user: updateResult.rows[0]
+        });
+      }
+    }
+
+    res.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error('❌ Reset admin credentials error:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+};
+
