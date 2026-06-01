@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import { query } from './database/connection';
 
 // Routes
 import authRoutes from './routes/auth.routes';
