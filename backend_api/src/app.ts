@@ -53,20 +53,8 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// تفعيل سياق الشركة لتحديد المستأجر تلقائياً لجميع الطلبات
-import { tenantContext } from './middleware/tenant.middleware';
-app.use(tenantContext);
-
 // ===========================
-// خدمة الواجهة الأمامية (Web App)
-// ===========================
-// __dirname in production = /usr/src/app/dist
-// public folder is at   = /usr/src/app/public
-const publicPath = path.join(__dirname, '../public');
-app.use(express.static(publicPath));
-
-// ===========================
-// المسارات الصحية (Health Check)
+// المسارات الصحية والتشخيصية (Health & Diagnostics Check)
 // ===========================
 app.get('/api/status', (req, res) => {
   res.json({
@@ -123,6 +111,18 @@ app.get('/api/diag', async (req, res) => {
     res.json({ success: false, error: err.message });
   }
 });
+
+// تفعيل سياق الشركة لتحديد المستأجر تلقائياً لجميع الطلبات
+import { tenantContext } from './middleware/tenant.middleware';
+app.use(tenantContext);
+
+// ===========================
+// خدمة الواجهة الأمامية (Web App)
+// ===========================
+// __dirname in production = /usr/src/app/dist
+// public folder is at   = /usr/src/app/public
+const publicPath = path.join(__dirname, '../public');
+app.use(express.static(publicPath));
 
 // ===========================
 // تسجيل الـ Routes
