@@ -260,7 +260,7 @@ BEGIN
         c.company_id
     FROM companies c
     JOIN roles r ON r.company_id = c.company_id AND r.role_name = 'admin'
-    ON CONFLICT (username, company_id) DO NOTHING;
+    ON CONFLICT DO NOTHING;
 
     -- 5. Ensure default zones exist for each company
     INSERT INTO zones (zone_name, zone_code, company_id)
