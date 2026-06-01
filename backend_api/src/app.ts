@@ -88,13 +88,23 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/diag', async (req, res) => {
   try {
-    const tables = ['companies', 'users', 'customers', 'bills', 'meters', 'readings', 'tariff_rates', 'zones'];
+    const tablesRes = await query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    const tables = tablesRes.rows.map(r => r.table_name);
+    
     const results: any = {};
     for (const table of tables) {
-      const countRes = await query(`SELECT COUNT(*) FROM ${table}`);
-      results[table] = countRes.rows[0].count;
+      try {
+        const countRes = await query(`SELECT COUNT(*) FROM "${table}"`);
+        results[table] = countRes.rows[0].count;
+      } catch (err: any) {
+        results[table] = `ERROR: ${err.message}`;
+      }
     }
-    res.json({ success: true, counts: results });
+    res.json({ success: true, tables: tables, counts: results });
   } catch (err: any) {
     res.json({ success: false, error: err.message });
   }
