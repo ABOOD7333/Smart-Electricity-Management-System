@@ -88,6 +88,13 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/diag', async (req, res) => {
   try {
+    const dbNameRes = await query('SELECT current_database(), current_user');
+    const currentDb = dbNameRes.rows[0].current_database;
+    const currentUser = dbNameRes.rows[0].current_user;
+
+    const dbsRes = await query('SELECT datname FROM pg_database WHERE datistemplate = false');
+    const databases = dbsRes.rows.map(r => r.datname);
+
     const tablesRes = await query(`
       SELECT table_name 
       FROM information_schema.tables 
@@ -104,7 +111,14 @@ app.get('/api/diag', async (req, res) => {
         results[table] = `ERROR: ${err.message}`;
       }
     }
-    res.json({ success: true, tables: tables, counts: results });
+    res.json({ 
+      success: true, 
+      current_database: currentDb,
+      current_user: currentUser,
+      all_databases: databases,
+      tables: tables, 
+      counts: results 
+    });
   } catch (err: any) {
     res.json({ success: false, error: err.message });
   }
