@@ -85,6 +85,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/diag', async (req, res) => {
+  try {
+    const tables = ['companies', 'users', 'customers', 'bills', 'meters', 'readings', 'tariff_rates', 'zones'];
+    const results: any = {};
+    for (const table of tables) {
+      const countRes = await query(`SELECT COUNT(*) FROM ${table}`);
+      results[table] = countRes.rows[0].count;
+    }
+    res.json({ success: true, counts: results });
+  } catch (err: any) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // ===========================
 // تسجيل الـ Routes
 // ===========================
