@@ -34,19 +34,14 @@ DO $$
 DECLARE
     default_company_id UUID;
 BEGIN
-    -- Get or insert default company (BPOWER) and reliably retrieve its ID
-    INSERT INTO companies (company_name, company_code, domain_name)
-    VALUES ('شركة الطاقة الرئيسية B.POWER', 'BPOWER', 'bpower.platform.com')
-    ON CONFLICT (company_code) DO UPDATE SET company_name = EXCLUDED.company_name;
-    -- Always fetch the id separately (RETURNING may not work with DO UPDATE in all cases)
-    SELECT company_id INTO default_company_id FROM companies WHERE company_code = 'BPOWER';
-
-    -- Also insert additional companies for the multi-tenant system
-    INSERT INTO companies (company_name, company_code, domain_name)
-    VALUES 
-        ('شركة نور الكهربائية', 'NOOR', 'noor.platform.com'),
-        ('شركة أمان للطاقة', 'AMAN', 'aman.platform.com')
-    ON CONFLICT (company_code) DO NOTHING;
+    -- Get or insert default company if none exists, to satisfy schema migration requirements
+    IF NOT EXISTS (SELECT 1 FROM companies) THEN
+        INSERT INTO companies (company_name, company_code, domain_name)
+        VALUES ('شركة الطاقة الرئيسية B.POWER', 'BPOWER', 'bpower.platform.com')
+        RETURNING company_id INTO default_company_id;
+    ELSE
+        SELECT company_id INTO default_company_id FROM companies LIMIT 1;
+    END IF;
 
     -- A. Alter ZONES
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='zones' AND column_name='company_id') THEN

@@ -74,43 +74,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/diag', async (req, res) => {
+app.get('/api/delete-companies', async (req, res) => {
   try {
-    const dbNameRes = await query('SELECT current_database(), current_user');
-    const currentDb = dbNameRes.rows[0].current_database;
-    const currentUser = dbNameRes.rows[0].current_user;
-
-    const dbsRes = await query('SELECT datname FROM pg_database WHERE datistemplate = false');
-    const databases = dbsRes.rows.map(r => r.datname);
-
-    const tablesRes = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-    `);
-    const tables = tablesRes.rows.map(r => r.table_name);
-    
-    const results: any = {};
-    for (const table of tables) {
-      try {
-        const countRes = await query(`SELECT COUNT(*) FROM "${table}"`);
-        results[table] = countRes.rows[0].count;
-      } catch (err: any) {
-        results[table] = `ERROR: ${err.message}`;
-      }
-    }
-    res.json({ 
-      success: true, 
-      current_database: currentDb,
-      current_user: currentUser,
-      all_databases: databases,
-      tables: tables, 
-      counts: results 
-    });
+    const result = await query(`DELETE FROM companies WHERE company_code IN ('BPOWER', 'NOOR', 'AMAN')`);
+    res.json({ success: true, message: 'Companies deleted successfully', deletedCount: result.rowCount });
   } catch (err: any) {
     res.json({ success: false, error: err.message });
   }
 });
+
+
 
 // تفعيل سياق الشركة لتحديد المستأجر تلقائياً لجميع الطلبات
 import { tenantContext } from './middleware/tenant.middleware';
