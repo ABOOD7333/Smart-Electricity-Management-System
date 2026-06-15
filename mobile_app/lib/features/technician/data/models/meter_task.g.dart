@@ -15,7 +15,7 @@ extension GetMeterTaskCollection on Isar {
 
 const MeterTaskSchema = CollectionSchema(
   name: r'MeterTask',
-  id: 9028738997379520678,
+  id: 9028738997379520512,
   properties: {
     r'address': PropertySchema(
       id: 0,
@@ -65,7 +65,7 @@ const MeterTaskSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'meterId': IndexSchema(
-      id: -1596511903527871468,
+      id: -1596511903527871488,
       name: r'meterId',
       unique: true,
       replace: true,

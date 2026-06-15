@@ -15,7 +15,7 @@ extension GetOfflineReadingCollection on Isar {
 
 const OfflineReadingSchema = CollectionSchema(
   name: r'OfflineReading',
-  id: -2675710263022525092,
+  id: -2675710263022524928,
   properties: {
     r'imagePath': PropertySchema(
       id: 0,
