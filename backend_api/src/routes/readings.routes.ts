@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  createReading, getMeterReadings, approveReading, getPendingReadings
+  createReading, getMeterReadings, approveReading, getPendingReadings, getTechnicianReadings
 } from '../controllers/readings.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { uploadReadingImage } from '../middleware/upload.middleware';
@@ -8,6 +8,9 @@ import { uploadReadingImage } from '../middleware/upload.middleware';
 const router = Router();
 
 router.use(authenticate);
+
+// GET  /api/readings/technician    - سجل قراءات الفني الميداني الحالي
+router.get('/technician', getTechnicianReadings);
 
 // GET  /api/readings/pending       - قراءات معلقة (للمشرف)
 router.get('/pending', authorize('admin', 'supervisor'), getPendingReadings);

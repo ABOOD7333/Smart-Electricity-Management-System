@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/technician_repository.dart';
 import '../../data/models/meter_task.dart';
+import '../../data/models/offline_reading.dart';
 
 final assignedTasksProvider = StateNotifierProvider<AssignedTasksNotifier, AsyncValue<List<MeterTask>>>((ref) {
   final repo = ref.watch(technicianRepositoryProvider);
@@ -77,3 +78,15 @@ final syncProvider = StateNotifierProvider<SyncNotifier, SyncState>((ref) {
 
 // Loading state for submitting a single reading
 final readingSubmissionProvider = StateProvider<bool>((ref) => false);
+
+// Provider for technician reading history
+final readingsHistoryProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final repo = ref.watch(technicianRepositoryProvider);
+  return repo.getReadingsHistory();
+});
+
+// Provider for offline readings queue
+final offlineReadingsProvider = FutureProvider.autoDispose<List<OfflineReading>>((ref) async {
+  final repo = ref.watch(technicianRepositoryProvider);
+  return repo.getPendingReadings();
+});

@@ -222,4 +222,18 @@ class TechnicianRepository {
       'failedCount': failedCount,
     };
   }
+
+  // Fetch technician reading history
+  Future<List<Map<String, dynamic>>> getReadingsHistory() async {
+    try {
+      final response = await _dio.get('/readings/technician');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      throw Exception('فشل جلب سجل القراءات: $e');
+    }
+  }
 }

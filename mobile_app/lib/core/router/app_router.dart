@@ -16,6 +16,9 @@ import '../../features/customer/presentation/screens/complaints_history_screen.d
 import '../../features/customer/presentation/screens/profile_screen.dart';
 import '../../features/technician/presentation/screens/technician_dashboard.dart';
 import '../../features/technician/presentation/screens/meter_reading_screen.dart';
+import '../../features/technician/presentation/screens/readings_history_screen.dart';
+import '../../features/technician/presentation/screens/offline_list_screen.dart';
+import '../../features/technician/presentation/screens/technician_profile_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -97,6 +100,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             customerName: customerName,
           );
         },
+      ),
+      GoRoute(
+        path: '/technician/history',
+        builder: (context, state) => const ReadingsHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/technician/offline',
+        builder: (context, state) => const OfflineListScreen(),
+      ),
+      GoRoute(
+        path: '/technician/profile',
+        builder: (context, state) => const TechnicianProfileScreen(),
       ),
     ],
   );

@@ -30,6 +30,7 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
     final authState = ref.watch(authProvider);
     final tasksAsync = ref.watch(assignedTasksProvider);
     final syncState = ref.watch(syncProvider);
+    final offlineAsync = ref.watch(offlineReadingsProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
@@ -45,6 +46,10 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_outline_rounded, color: Colors.white),
+            onPressed: () => context.push('/technician/profile'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppTheme.dangerColor),
             onPressed: () async {
               await ref.read(authProvider.notifier).logout();
@@ -58,6 +63,7 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
           onRefresh: () async {
             ref.read(assignedTasksProvider.notifier).loadTasks();
             ref.read(syncProvider.notifier).sync();
+            ref.invalidate(offlineReadingsProvider);
           },
           color: AppTheme.primaryColor,
           backgroundColor: AppTheme.darkCardBg,
@@ -144,6 +150,122 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
                     ),
                   ),
                 ).animate().fade(duration: 500.ms).slideY(begin: 0.1),
+              ),
+
+              // Quick Actions Row
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Row(
+                    children: [
+                      // History Card
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => context.push('/technician/history'),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.darkCardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            ),
+                            child: const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.history_rounded, color: AppTheme.primaryColor, size: 28),
+                                SizedBox(height: 12),
+                                Text(
+                                  'أرشيف القراءات',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Cairo',
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'عرض سجل القراءات المرفوعة',
+                                  style: TextStyle(
+                                    color: AppTheme.darkTextSecondary,
+                                    fontSize: 10,
+                                    fontFamily: 'Cairo',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Offline Queue Card
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => context.push('/technician/offline'),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.darkCardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Icon(Icons.cloud_off_rounded, color: AppTheme.warningColor, size: 28),
+                                    offlineAsync.when(
+                                      data: (readings) => readings.isNotEmpty
+                                          ? Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.warningColor.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                '${readings.length}',
+                                                style: const TextStyle(
+                                                  color: AppTheme.warningColor,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            )
+                                          : const SizedBox.shrink(),
+                                      error: (_, __) => const SizedBox.shrink(),
+                                      loading: () => const SizedBox.shrink(),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'قائمة الانتظار',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Cairo',
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'قراءات معلقة محلياً',
+                                  style: TextStyle(
+                                    color: AppTheme.darkTextSecondary,
+                                    fontSize: 10,
+                                    fontFamily: 'Cairo',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
 
               // Sync Queue Banner (If applicable)

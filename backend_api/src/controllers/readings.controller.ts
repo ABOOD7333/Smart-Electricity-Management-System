@@ -137,3 +137,36 @@ export const getPendingReadings = async (req: any, res: Response): Promise<void>
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };
+
+// ===========================
+// جلب سجل قراءات الفني الحالي (للموبايل)
+// ===========================
+export const getTechnicianReadings = async (req: any, res: Response): Promise<void> => {
+  const technicianId = req.user?.user_id;
+
+  if (!technicianId) {
+    res.status(401).json({ success: false, message: 'غير مصرح: يرجى تسجيل الدخول' });
+    return;
+  }
+
+  try {
+    const result = await query(
+      `SELECT 
+        r.reading_id, r.previous_reading, r.current_reading, r.consumption,
+        r.reading_date, r.reading_image_url, r.gps_latitude, r.gps_longitude, r.status, r.notes,
+        m.meter_number,
+        c.full_name AS customer_name
+       FROM meter_readings r
+       JOIN meters m ON r.meter_id = m.meter_id
+       JOIN customers c ON m.customer_id = c.customer_id
+       WHERE r.technician_id = $1
+       ORDER BY r.reading_date DESC`,
+      [technicianId]
+    );
+
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error fetching technician readings:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+};
