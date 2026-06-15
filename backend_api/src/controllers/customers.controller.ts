@@ -226,3 +226,20 @@ export const getCustomerBills = async (req: TenantRequest, res: Response): Promi
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };
+
+// ===========================
+// جلب جميع مناطق الشركة (مع عزل الشركة)
+// ===========================
+export const getZones = async (req: TenantRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      'SELECT zone_id, zone_name, zone_code FROM zones WHERE company_id = $1 ORDER BY zone_name ASC',
+      [req.tenantId]
+    );
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Get zones error:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+};
+
