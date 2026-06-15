@@ -7,6 +7,8 @@ export interface AuthRequest extends Request {
     username: string;
     role: string;
     zone_id: string | null;
+    company_id?: string;
+    customer_id?: string;
   };
 }
 

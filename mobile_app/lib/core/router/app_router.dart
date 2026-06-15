@@ -10,6 +10,10 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/register_company_screen.dart';
 import '../../features/auth/presentation/screens/verify_otp_screen.dart';
 import '../../features/customer/presentation/screens/customer_dashboard.dart';
+import '../../features/customer/presentation/screens/payment_screen.dart';
+import '../../features/customer/presentation/screens/bill_details_screen.dart';
+import '../../features/customer/presentation/screens/complaints_history_screen.dart';
+import '../../features/customer/presentation/screens/profile_screen.dart';
 import '../../features/technician/presentation/screens/technician_dashboard.dart';
 import '../../features/technician/presentation/screens/meter_reading_screen.dart';
 
@@ -54,6 +58,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/customer',
         builder: (context, state) => const CustomerDashboard(),
+      ),
+      GoRoute(
+        path: '/customer/payment',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final billId = extra['bill_id'] as String?;
+          final amount = (extra['amount'] as num?)?.toDouble();
+          return PaymentScreen(billId: billId, initialAmount: amount);
+        },
+      ),
+      GoRoute(
+        path: '/customer/bill/:billId',
+        builder: (context, state) {
+          final billId = state.pathParameters['billId']!;
+          return BillDetailsScreen(billId: billId);
+        },
+      ),
+      GoRoute(
+        path: '/customer/complaints',
+        builder: (context, state) => const ComplaintsHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/customer/profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
         path: '/technician',

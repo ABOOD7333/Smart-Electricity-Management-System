@@ -17,147 +17,6 @@ class CustomerDashboard extends ConsumerStatefulWidget {
 }
 
 class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
-  final _subjectController = TextEditingController();
-  final _descController = TextEditingController();
-  final _complaintFormKey = GlobalKey<FormState>();
-
-  @override
-  void dispose() {
-    _subjectController.dispose();
-    _descController.dispose();
-    super.dispose();
-  }
-
-  void _showComplaintBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.darkCardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: Form(
-            key: _complaintFormKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      AppStrings.complaintsTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Cairo',
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white60),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _subjectController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: AppStrings.complaintSubject,
-                    labelStyle: const TextStyle(color: AppTheme.darkTextSecondary, fontFamily: 'Cairo'),
-                    filled: true,
-                    fillColor: AppTheme.darkBg,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'هذا الحقل مطلوب' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _descController,
-                  maxLines: 4,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: AppStrings.complaintDescription,
-                    labelStyle: const TextStyle(color: AppTheme.darkTextSecondary, fontFamily: 'Cairo'),
-                    filled: true,
-                    fillColor: AppTheme.darkBg,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'هذا الحقل مطلوب' : null,
-                ),
-                const SizedBox(height: 24),
-                Consumer(
-                  builder: (context, ref, child) {
-                    final isSubmitting = ref.watch(complaintSubmittingProvider);
-                    return ElevatedButton(
-                      onPressed: isSubmitting ? null : _submitComplaint,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text(
-                              AppStrings.submitComplaint,
-                              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
-                            ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _submitComplaint() async {
-    if (!_complaintFormKey.currentState!.validate()) return;
-    ref.read(complaintSubmittingProvider.notifier).state = true;
-
-    final success = await ref.read(customerProvider.notifier).submitComplaint(
-          _subjectController.text.trim(),
-          _descController.text.trim(),
-        );
-
-    ref.read(complaintSubmittingProvider.notifier).state = false;
-
-    if (mounted) {
-      Navigator.of(context).pop(); // Close bottom sheet
-      _subjectController.clear();
-      _descController.clear();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? AppStrings.complaintSuccess : 'حدث خطأ أثناء تقديم الشكوى، حاول لاحقاً',
-            style: const TextStyle(fontFamily: 'Cairo'),
-            textAlign: TextAlign.center,
-          ),
-          backgroundColor: success ? AppTheme.successColor : AppTheme.dangerColor,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -176,6 +35,10 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
               ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline_rounded, color: Colors.white),
+            onPressed: () => context.go('/customer/profile'),
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppTheme.dangerColor),
             onPressed: () async {
@@ -313,7 +176,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                         children: [
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: _showComplaintBottomSheet,
+                              onPressed: () => context.go('/customer/complaints'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.darkCardBg,
                                 foregroundColor: Colors.white,
@@ -325,7 +188,7 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                               ),
                               icon: const Icon(Icons.campaign_rounded, color: AppTheme.accentColor, size: 20),
                               label: const Text(
-                                'تقديم بلاغ/شكوى',
+                                'البلاغات والشكاوى',
                                 style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -334,13 +197,9 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                // Mock payment action
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('بوابة الدفع الإلكتروني ستتوفر قريباً!', style: TextStyle(fontFamily: 'Cairo')),
-                                    backgroundColor: AppTheme.successColor,
-                                  ),
-                                );
+                                context.go('/customer/payment', extra: {
+                                  'amount': customerState.currentBalance,
+                                });
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primaryColor,
@@ -450,58 +309,62 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
                               ? intl.DateFormat('yyyy/MM/dd').format(DateTime.parse(bill['created_at']))
                               : 'غير محدد';
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppTheme.darkCardBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${AppStrings.billNumber} ${bill['bill_number']}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${AppStrings.billDate} $dateStr',
-                                      style: const TextStyle(color: AppTheme.darkTextSecondary, fontSize: 11, fontFamily: 'Cairo'),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '${bill['total_amount']} ${AppStrings.riyalSuffix}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: isPaid ? AppTheme.successColor.withValues(alpha: 0.1) : AppTheme.dangerColor.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
+                          return InkWell(
+                            onTap: () => context.go('/customer/bill/${bill['bill_id']}'),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.darkCardBg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${AppStrings.billNumber} ${bill['bill_number']}',
+                                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
                                       ),
-                                      child: Text(
-                                        isPaid ? AppStrings.billStatusPaid : AppStrings.billStatusUnpaid,
-                                        style: TextStyle(
-                                          color: isPaid ? AppTheme.successColor : AppTheme.dangerColor,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'Cairo',
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${AppStrings.billDate} $dateStr',
+                                        style: const TextStyle(color: AppTheme.darkTextSecondary, fontSize: 11, fontFamily: 'Cairo'),
+                                      ),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${bill['total_amount']} ${AppStrings.riyalSuffix}',
+                                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isPaid ? AppTheme.successColor.withValues(alpha: 0.1) : AppTheme.dangerColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          isPaid ? AppStrings.billStatusPaid : AppStrings.billStatusUnpaid,
+                                          style: TextStyle(
+                                            color: isPaid ? AppTheme.successColor : AppTheme.dangerColor,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Cairo',
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ).animate(delay: (index * 50).ms).fade(duration: 300.ms).slideY(begin: 0.05);
                         },

@@ -158,6 +158,13 @@ export const recordPayment = async (req: any, res: Response): Promise<void> => {
     const targetBill = billResult.rows[0];
     const customerId = targetBill.customer_id;
 
+    // التحقق من ملكية المشترك للفاتورة
+    if (req.user?.role === 'customer' && req.user?.customer_id !== customerId) {
+      res.status(403).json({ success: false, message: 'غير مصرح لك بسداد فاتورة لا تخص حسابك' });
+      await client.query('ROLLBACK');
+      return;
+    }
+
     // جلب جميع الفواتير غير المدفوعة للمشترك في نفس الشركة
     const unpaidBillsResult = await client.query(
       `SELECT * FROM bills 

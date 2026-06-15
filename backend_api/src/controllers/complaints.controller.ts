@@ -5,13 +5,21 @@ import { AuthRequest } from '../middleware/auth.middleware';
 
 export const getComplaints = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const result = await query(
-      `SELECT c.*, cust.full_name as customer_name, cust.customer_number, u.full_name as assigned_to_name
-       FROM complaints c
-       JOIN customers cust ON c.customer_id = cust.customer_id
-       LEFT JOIN users u ON c.assigned_to = u.user_id
-       ORDER BY c.created_at DESC`
-    );
+    let q = `SELECT c.*, cust.full_name as customer_name, cust.customer_number, u.full_name as assigned_to_name
+             FROM complaints c
+             JOIN customers cust ON c.customer_id = cust.customer_id
+             LEFT JOIN users u ON c.assigned_to = u.user_id`;
+    let params: any[] = [];
+
+    // إذا كان المستخدم مشتركاً، يتم تصفية الشكاوى لتخص حسابه فقط
+    if (req.user?.role === 'customer') {
+      q += ` WHERE c.customer_id = $1`;
+      params.push(req.user.customer_id);
+    }
+
+    q += ` ORDER BY c.created_at DESC`;
+
+    const result = await query(q, params);
     res.status(200).json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, message: 'حدث خطأ في جلب الشكاوى' });
@@ -35,14 +43,27 @@ export const getComplaintById = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
-    res.status(200).json({ success: true, data: result.rows[0] });
+    const complaint = result.rows[0];
+
+    // التحقق من ملكية المشترك للشكوى
+    if (req.user?.role === 'customer' && req.user?.customer_id !== complaint.customer_id) {
+      res.status(403).json({ success: false, message: 'غير مصرح لك بمشاهدة تفاصيل شكوى لا تخصك' });
+      return;
+    }
+
+    res.status(200).json({ success: true, data: complaint });
   } catch (error) {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };
 
 export const createComplaint = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { customer_id, category, subject, description } = req.body;
+  let { customer_id, category, subject, description } = req.body;
+
+  // إذا كان مشتركاً، نفرض معرف حسابه تلقائياً
+  if (req.user?.role === 'customer') {
+    customer_id = req.user.customer_id;
+  }
 
   if (!customer_id || !subject || !description) {
     res.status(400).json({ success: false, message: 'يرجى إدخال الحقول المطلوبة' });

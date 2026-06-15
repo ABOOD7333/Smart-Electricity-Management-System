@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import {
   getAllCustomers, getCustomerById, createCustomer,
-  updateCustomer, getCustomerBills, getZones
+  updateCustomer, getCustomerBills, getZones, getCustomerDashboard
 } from '../controllers/customers.controller';
 import { requireTenantAuth } from '../middleware/tenant.middleware';
-import { authorize } from '../middleware/auth.middleware';
+import { authorize, authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -13,6 +13,9 @@ router.use(requireTenantAuth);
 
 // GET  /api/customers/zones     - مناطق الشركة
 router.get('/zones', getZones);
+
+// GET  /api/customers/dashboard - لوحة تحكم المشترك
+router.get('/dashboard', authenticate, getCustomerDashboard);
 
 // GET  /api/customers          - جميع العملاء (مع بحث وصفحات)
 router.get('/', getAllCustomers);

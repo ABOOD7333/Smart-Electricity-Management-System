@@ -22,6 +22,6 @@ router.get('/:id', getBillById);
 router.post('/', authorize('admin', 'supervisor', 'cashier'), createBill);
 
 // POST /api/bills/:id/pay      - تسجيل دفعة
-router.post('/:id/pay', authorize('admin', 'supervisor', 'cashier'), recordPayment);
+router.post('/:id/pay', authorize('admin', 'supervisor', 'cashier', 'customer'), recordPayment);
 
 export default router;

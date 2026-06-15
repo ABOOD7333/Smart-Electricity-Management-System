@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { query } from '../database/connection';
+import { query, getClient } from '../database/connection';
 import { TenantRequest } from '../middleware/tenant.middleware';
 
 // ============================================================
@@ -72,6 +72,7 @@ export const login = async (req: TenantRequest, res: Response): Promise<void> =>
       role: user.role,
       zone_id: user.zone_id,
       company_id: user.company_id,
+      customer_id: user.customer_id,
     };
 
     const accessToken = jwt.sign(
@@ -218,6 +219,7 @@ export const register = async (req: TenantRequest, res: Response): Promise<void>
       role: 'customer',
       zone_id,
       company_id: activeCompanyId,
+      customer_id: customer_id,
     };
 
     const accessToken = jwt.sign(
@@ -534,6 +536,61 @@ export const changePassword = async (req: any, res: Response): Promise<void> => 
   } catch (error) {
     console.error('❌ Change password error:', error);
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+};
+
+// ============================================================
+// تحديث الملف الشخصي للمستخدم الحالي (Update Profile)
+// ============================================================
+export const updateMyProfile = async (req: any, res: Response): Promise<void> => {
+  const { email, phone_number, alternate_phone, address } = req.body;
+  const userId = req.user?.user_id;
+  const customerId = req.user?.customer_id;
+
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'غير مصرح: يرجى تسجيل الدخول' });
+    return;
+  }
+
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+
+    // 1. تحديث جدول المستخدمين (users)
+    await client.query(
+      `UPDATE users 
+       SET email = COALESCE($1, email),
+           phone_number = COALESCE($2, phone_number),
+           updated_at = NOW()
+       WHERE user_id = $3`,
+      [email || null, phone_number || null, userId]
+    );
+
+    // 2. تحديث جدول المشتركين (customers) إذا كان مستخدماً مرتبطاً بمشترك
+    if (customerId) {
+      await client.query(
+        `UPDATE customers 
+         SET phone_number = COALESCE($1, phone_number),
+             alternate_phone = COALESCE($2, alternate_phone),
+             address = COALESCE($3, address),
+             updated_at = NOW()
+         WHERE customer_id = $4`,
+        [phone_number || null, alternate_phone || null, address || null, customerId]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.status(200).json({
+      success: true,
+      message: 'تم تحديث بيانات ملفك الشخصي بنجاح'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Update profile error:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ في تحديث ملفك الشخصي' });
+  } finally {
+    client.release();
   }
 };
 
