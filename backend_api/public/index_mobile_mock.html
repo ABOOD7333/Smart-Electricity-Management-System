@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ نظام إدارة الكهرباء الذكي</title>
+  <meta name="description" content="نظام إدارة الكهرباء الذكي - إدارة الفواتير والعدادات والمشتركين بكفاءة عالية" />
+  
+  <!-- PWA & Mobile Optimization -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#07111C" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #00B4D8;
+      --primary-dark: #0096B7;
+      --primary-glow: rgba(0,180,216,0.25);
+      --success: #06D6A0;
+      --danger: #FF6B6B;
+      --warning: #FFB703;
+      --bg: #07111C;
+      --bg2: #0A1A28;
+      --card: #0D2137;
+      --card2: #112840;
+      --border: rgba(0,180,216,0.15);
+      --text: #E8F4F8;
+      --text-sec: #7BA7BC;
+      --text-muted: #4A7A95;
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Scrollbar ─────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--primary-dark); border-radius: 3px; }
+
+    /* ─── Screen System ─────────────────────────────── */
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* ─── Backgrounds ───────────────────────────────── */
+    .bg-grad {
+      position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at top right, rgba(0,180,216,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at bottom left, rgba(6,214,160,0.05) 0%, transparent 60%),
+                  linear-gradient(160deg, #07111C 0%, #0A1B2E 50%, #06111C 100%);
+    }
+    .glow-circle {
+      position: fixed; border-radius: 50%; filter: blur(80px); z-index: -1; pointer-events: none;
+    }
+    .glow-1 { width: 400px; height: 400px; background: rgba(0,180,216,0.06); top: -100px; right: -100px; }
+    .glow-2 { width: 300px; height: 300px; background: rgba(6,214,160,0.04); bottom: 50px; left: -80px; }
+
+    /* ─── Auth Container ────────────────────────────── */
+    .auth-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 20px; min-height: 100vh;
+    }
+    .auth-card {
+      width: 100%; max-width: 460px;
+      background: rgba(13,33,55,0.85);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 40px 36px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,180,216,0.08);
+      animation: cardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ─── Logo ──────────────────────────────────────── */
+    .logo-wrap {
+      display: flex; flex-direction: column; align-items: center; margin-bottom: 30px;
+    }
+    .logo-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(0,180,216,0.2), rgba(0,180,216,0.05));
+      border: 1px solid rgba(0,180,216,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; margin-bottom: 14px;
+      box-shadow: 0 0 30px rgba(0,180,216,0.15);
+    }
+    .logo-title {
+      font-size: 22px; font-weight: 800; color: var(--text);
+      text-align: center; line-height: 1.3;
+    }
+    .logo-sub {
+      font-size: 13px; color: var(--text-sec); margin-top: 4px; text-align: center;
+    }
+
+    /* ─── Toggle ────────────────────────────────────── */
+    .toggle-wrap {
+      display: flex; background: rgba(0,0,0,0.3);
+      border-radius: var(--radius-sm); padding: 4px; margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+    .toggle-btn {
+      flex: 1; padding: 10px 8px; border: none; background: transparent;
+      color: var(--text-sec); font-family: 'Cairo', sans-serif; font-size: 13px;
+      font-weight: 600; border-radius: 9px; cursor: pointer;
+      transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .toggle-btn.active {
+      background: linear-gradient(135deg, var(--primary), #0096B7);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0,180,216,0.35);
+    }
+
+    /* ─── Form Fields ───────────────────────────────── */
+    .field-group { margin-bottom: 14px; }
+    .field-label { font-size: 12px; color: var(--text-sec); margin-bottom: 6px; display: block; font-weight: 600; }
+    .field-wrap { position: relative; }
+    .field-wrap .icon {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--primary); font-size: 18px; pointer-events: none;
+    }
+    .field-wrap .eye-btn {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--text-sec); cursor: pointer; font-size: 17px;
+      padding: 4px;
+    }
+    input, select {
+      width: 100%; padding: 13px 44px 13px 14px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 500;
+      outline: none; transition: all 0.3s; direction: rtl;
+    }
+    input::placeholder { color: var(--text-muted); }
+    input:focus, select:focus {
+      border-color: var(--primary); background: rgba(0,180,216,0.05);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+    select { appearance: none; cursor: pointer; }
+    select option { background: var(--card); color: var(--text); }
+    .has-eye input { padding-left: 42px; }
+
+    /* ─── Buttons ───────────────────────────────────── */
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm);
+      font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #0096B7);
+      color: white;
+      box-shadow: 0 8px 25px rgba(0,180,216,0.35);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px); box-shadow: 0 12px 35px rgba(0,180,216,0.45);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #05B386);
+      color: white; box-shadow: 0 8px 25px rgba(6,214,160,0.3);
+    }
+    .btn-success:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn-outline {
+      background: transparent; color: var(--primary);
+      border: 1.5px solid rgba(0,180,216,0.5);
+    }
+    .btn-outline:hover { background: rgba(0,180,216,0.08); border-color: var(--primary); }
+    .btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+    .btn-sm { padding: 10px 14px; font-size: 13px; }
+
+    /* ─── Divider ───────────────────────────────────── */
+    .divider {
+      display: flex; align-items: center; gap: 12px; margin: 18px 0;
+      color: var(--text-muted); font-size: 12px;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08);
+    }
+
+    /* ─── Links ─────────────────────────────────────── */
+    .link-btn {
+      background: none; border: none; color: var(--primary); font-family: 'Cairo', sans-serif;
+      font-size: 13px; cursor: pointer; font-weight: 600; text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .link-btn:hover { color: #4ECFE8; }
+    .text-center { text-align: center; }
+    .text-sec { color: var(--text-sec); font-size: 13px; }
+
+    /* ─── Error / Success Messages ──────────────────── */
+    .msg {
+      padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+      margin-bottom: 16px; display: none; align-items: flex-start; gap: 10px;
+      animation: fadeSlide 0.3s ease;
+    }
+    .msg.show { display: flex; }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+    .msg-error { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.3); color: #FF9494; }
+    .msg-success { background: rgba(6,214,160,0.1); border: 1px solid rgba(6,214,160,0.3); color: var(--success); }
+    .msg-info { background: rgba(0,180,216,0.1); border: 1px solid rgba(0,180,216,0.25); color: var(--primary); }
+
+    /* ─── Step Indicator ────────────────────────────── */
+    .steps {
+      display: flex; gap: 8px; margin-bottom: 24px;
+    }
+    .step-bar {
+      flex: 1; height: 4px; border-radius: 2px;
+      background: var(--card); transition: all 0.4s;
+    }
+    .step-bar.done { background: var(--success); }
+    .step-bar.active { background: var(--primary); }
+
+    /* ─── Info Box ──────────────────────────────────── */
+    .info-box {
+      background: rgba(0,180,216,0.07); border: 1px solid rgba(0,180,216,0.2);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px;
+      font-size: 12px; color: var(--text-sec); line-height: 1.6;
+    }
+    .info-box span:first-child { flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── Dashboard ─────────────────────────────────── */
+    .dash-header {
+      padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
+      background: rgba(13,33,55,0.8); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 10;
+    }
+    .dash-logo { display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 800; }
+    .dash-logo-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #0096B7);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .dash-main { flex: 1; padding: 32px 24px; max-width: 900px; margin: 0 auto; width: 100%; }
+    .welcome-card {
+      background: linear-gradient(135deg, var(--card), var(--card2));
+      border: 1px solid var(--border); border-radius: 24px; padding: 30px;
+      margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .welcome-card::before {
+      content: ''; position: absolute; top: -30px; left: -30px;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,180,216,0.1), transparent 70%);
+    }
+    .welcome-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .welcome-sub { color: var(--text-sec); font-size: 14px; }
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: rgba(13,33,55,0.6); border: 1px solid var(--border); border-radius: 18px;
+      padding: 22px; display: flex; align-items: center; gap: 16px;
+      transition: all 0.3s;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+    .stat-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;
+    }
+    .stat-icon.blue { background: rgba(0,180,216,0.12); }
+    .stat-icon.green { background: rgba(6,214,160,0.12); }
+    .stat-icon.yellow { background: rgba(255,183,3,0.12); }
+    .stat-icon.red { background: rgba(255,107,107,0.12); }
+    .stat-val { font-size: 26px; font-weight: 800; }
+    .stat-lbl { font-size: 12px; color: var(--text-sec); }
+
+    /* ─── Modal ─────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 24px;
+      padding: 36px; max-width: 400px; width: 100%; text-align: center;
+      animation: cardIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .modal-icon { font-size: 56px; margin-bottom: 16px; }
+    .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
+    .modal-sub { color: var(--text-sec); font-size: 13px; line-height: 1.6; margin-bottom: 20px; }
+    .modal-detail {
+      background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); padding: 14px;
+      margin-bottom: 20px; text-align: right;
+    }
+    .modal-row { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 4px 0; }
+    .modal-row .lbl { color: var(--text-sec); white-space: nowrap; }
+    .modal-row .val { color: var(--text); font-weight: 700; }
+
+    /* ─── Spinner ───────────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px; border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Responsive ────────────────────────────────── */
+    @media (max-width: 520px) {
+      .auth-card { padding: 28px 20px; border-radius: 20px; }
+      .logo-title { font-size: 18px; }
+      .dash-main { padding: 20px 16px; }
+    }
+
+    /* ─── Pulse Animation ───────────────────────────── */
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+    .loading-text { animation: pulse 1.5s infinite; color: var(--text-sec); font-size: 13px; }
+
+    /* ─── Badge ─────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge-blue { background: rgba(0,180,216,0.15); color: var(--primary); border: 1px solid rgba(0,180,216,0.3); }
+    .badge-green { background: rgba(6,214,160,0.1); color: var(--success); border: 1px solid rgba(6,214,160,0.3); }
+
+    /* ─── Company Code helper ───────────────────────── */
+    .code-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+    .code-hint span { color: var(--primary); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<!-- Background decorations -->
+<div class="bg-grad"></div>
+<div class="glow-circle glow-1"></div>
+<div class="glow-circle glow-2"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 1: LOGIN
+═══════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="logo-wrap">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-title">نظام إدارة الكهرباء الذكي</div>
+        <div class="logo-sub">Smart Electricity Management System</div>
+      </div>
+
+      <!-- Toggle -->
+      <div class="toggle-wrap">
+        <button class="toggle-btn active" id="tab-customer" onclick="setUserType('customer')">
+          🏠 مشترك
+        </button>
+        <button class="toggle-btn" id="tab-employee" onclick="setUserType('employee')">
+          👤 موظف / مشرف
+        </button>
+      </div>
+
+      <!-- Company Select -->
+      <div class="field-group" id="company-field">
+        <label class="field-label">شركة الكهرباء</label>
+        <div class="field-wrap">
+          <span class="icon">🏢</span>
+          <select id="login-company">
+            <option value="">⏳ جارٍ التحميل...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Username -->
+      <div class="field-group">
+        <label class="field-label">اسم المستخدم</label>
+        <div class="field-wrap">
+          <span class="icon">👤</span>
+          <input type="text" id="login-user" placeholder="اسم المستخدم الخاص بك" autocomplete="username" />
+        </div>
+      </div>
+
+      <!-- Meter (customer only) -->
+      <div class="field-group" id="meter-field">
+        <label class="field-label">رقم العداد</label>
+        <div class="field-wrap">
+          <span class="icon">⚡</span>
+          <input type="text" id="login-meter" placeholder="رقم العداد المسجل باسمك" />
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="field-group">
+        <label class="field-label">كلمة المرور</label>
+        <div class="field-wrap has-eye">
+          <span class="icon">🔒</span>
+          <input type="password" id="login-pass" placeholder="كلمة المرور" autocomplete="current-password" />
+          <button class="eye-btn" onclick="toggleEye('login-pass', this)">👁</button>
+        </div>
+      </div>
+
+      <div id="login-msg" class="msg msg-error">
+        <span>⚠️</span><span id="login-msg-text"></span>
+      </div>
+
+      <button class="btn btn-primary" id="login-btn" onclick="doLogin()">
+        <span>تسجيل الدخول</span>
+      </button>
+
+      <div style="text-align:center; margin-top: 12px;">
+        <button class="link-btn" onclick="goTo('screen-forgot')">🔑 نسيت كلمة المرور؟</button>
+      </div>
+
+      <div class="divider">أو</div>
+
+      <div id="register-subscriber-wrap">
+        <button class="btn btn-outline" style="margin-bottom:10px" onclick="goTo('screen-register')">
+          ➕ إنشاء حساب مشترك جديد
+        </button>
+      </div>
+
+      <button class="btn btn-ghost btn-sm" onclick="goTo('screen-register-company')">
+        🏢 تسجيل شركة كهرباء جديدة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 2: REGISTER SUBSCRIBER
+═══════════════════════════════════════════════════ -->
+<div id="screen-register" class="screen">
+  <div class="auth-wrap" style="padding-top:24px;">
+    <div class="auth-card">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+        <button class="btn btn-ghost btn-sm" style="width:auto;padding:8px 12px" onclick="goTo('screen-login')">← رجوع</button>
+        <div style="flex:1; text-align:center;">
+          <div style="font-size:17px; font-weight:800;">إنشاء حساب مشترك</div>
+          <div class="text-sec">ادخل بياناتك للتحقق من عدادك</div>
+        </div>
+        <div style="width:70px;"></div>
+      </div>
+
+      <!-- Company -->
+      <div class="field-group">
+        <label class="field-label">شركة الكهرباء *</label>
+        <div class="field-wrap">
+          <span class="icon">🏢</span>
+          <select id="reg-company">
+            <option value="">اختر شركتك...</option>
+          </select>
+        </div>
+      </div>
+      <!-- Full Name -->
+      <div class="field-group">
+        <label class="field-label">الاسم الكامل *</label>
+        <div class="field-wrap">
+          <span class="icon">👤</span>
+          <input type="text" id="reg-name" placeholder="اسمك الكامل" />
+        </div>
+      </div>
+      <!-- Username -->
+      <div class="field-group">
+        <label class="field-label">اسم المستخدم *</label>
+        <div class="field-wrap">
+          <span class="icon">@</span>
+          <input type="text" id="reg-username" placeholder="اختر اسم مستخدم فريد" />
+        </div>
+      </div>
+      <!-- Phone -->
+      <div class="field-group">
+        <label class="field-label">رقم الجوال *</label>
+        <div class="field-wrap">
+          <span class="icon">📱</span>
+          <input type="tel" id="reg-phone" placeholder="رقم الواتساب المسجل" />
+        </div>
+      </div>
+      <!-- Meter -->
+      <div class="field-group">
+        <label class="field-label">رقم العداد *</label>
+        <div class="field-wrap">
+          <span class="icon">⚡</span>
+          <input type="text" id="reg-meter" placeholder="رقم العداد المسجل باسمك" />
+        </div>
+      </div>
+      <!-- Email -->
+      <div class="field-group">
+        <label class="field-label">البريد الإلكتروني (اختياري)</label>
+        <div class="field-wrap">
+          <span class="icon">✉️</span>
+          <input type="email" id="reg-email" placeholder="بريدك الإلكتروني" />
+        </div>
+      </div>
+      <!-- Password -->
+      <div class="field-group">
+        <label class="field-label">كلمة المرور *</label>
+        <div class="field-wrap has-eye">
+          <span class="icon">🔒</span>
+          <input type="password" id="reg-pass" placeholder="8 أحرف على الأقل" />
+          <button class="eye-btn" onclick="toggleEye('reg-pass', this)">👁</button>
+        </div>
+      </div>
+
+      <div id="reg-msg" class="msg msg-error">
+        <span>⚠️</span><span id="reg-msg-text"></span>
+      </div>
+
+      <button class="btn btn-primary" id="reg-btn" onclick="doRegister()">
+        ✅ تسجيل الحساب وتأكيد العداد
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 3: REGISTER COMPANY (2 STEPS)
+═══════════════════════════════════════════════════ -->
+<div id="screen-register-company" class="screen">
+  <div class="auth-wrap" style="padding-top:24px;">
+    <div class="auth-card">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <button class="btn btn-ghost btn-sm" style="width:auto;padding:8px 12px" onclick="goTo('screen-login')">← رجوع</button>
+        <div style="flex:1; text-align:center;">
+          <div style="font-size:17px; font-weight:800;" id="rc-title">تسجيل شركة كهرباء</div>
+          <div class="text-sec" id="rc-sub">الخطوة 1 من 2 · بيانات الشركة</div>
+        </div>
+        <div style="width:70px;"></div>
+      </div>
+
+      <!-- Step bars -->
+      <div class="steps">
+        <div class="step-bar active" id="step1-bar"></div>
+        <div class="step-bar" id="step2-bar"></div>
+      </div>
+
+      <!-- Step 1: Company Info -->
+      <div id="rc-step1">
+        <div class="field-group">
+          <label class="field-label">اسم الشركة الرسمي *</label>
+          <div class="field-wrap">
+            <span class="icon">🏢</span>
+            <input type="text" id="rc-name" placeholder="مثال: شركة الكهرباء الوطنية" oninput="autoCode(this.value)" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">رمز الشركة (بالإنجليزية) *</label>
+          <div class="field-wrap">
+            <span class="icon">🔤</span>
+            <input type="text" id="rc-code" placeholder="مثال: NATIONAL_POWER" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')" />
+          </div>
+          <div class="code-hint">3-20 حرف إنجليزي وأرقام فقط. الرمز الحالي: <span id="code-preview">—</span></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">هاتف الشركة الرسمي *</label>
+          <div class="field-wrap">
+            <span class="icon">📞</span>
+            <input type="tel" id="rc-phone" placeholder="+966xxxxxxxxx" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">البريد الإلكتروني (اختياري)</label>
+          <div class="field-wrap">
+            <span class="icon">✉️</span>
+            <input type="email" id="rc-email" placeholder="info@company.com" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">رقم الترخيص التجاري (اختياري)</label>
+          <div class="field-wrap">
+            <span class="icon">📄</span>
+            <input type="text" id="rc-license" placeholder="رقم السجل التجاري" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">العنوان (اختياري)</label>
+          <div class="field-wrap">
+            <span class="icon">📍</span>
+            <input type="text" id="rc-address" placeholder="عنوان المقر الرئيسي" />
+          </div>
+        </div>
+        <div id="rc-msg1" class="msg msg-error"><span>⚠️</span><span id="rc-msg1-text"></span></div>
+        <button class="btn btn-primary" onclick="rcNextStep()">التالي: بيانات المشرف ←</button>
+      </div>
+
+      <!-- Step 2: Admin Account -->
+      <div id="rc-step2" style="display:none;">
+        <div class="info-box">
+          <span>ℹ️</span>
+          <div>سيتم إنشاء حساب مشرف بصلاحيات كاملة لإدارة شركة <strong id="rc-company-preview" style="color:var(--primary)"></strong></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">اسم المشرف الكامل *</label>
+          <div class="field-wrap">
+            <span class="icon">👔</span>
+            <input type="text" id="rc-admin-name" placeholder="الاسم الكامل لمشرف الشركة" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">اسم مستخدم المشرف *</label>
+          <div class="field-wrap">
+            <span class="icon">@</span>
+            <input type="text" id="rc-admin-user" placeholder="اسم الدخول للمشرف" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">كلمة المرور *</label>
+          <div class="field-wrap has-eye">
+            <span class="icon">🔒</span>
+            <input type="password" id="rc-admin-pass" placeholder="8 أحرف على الأقل" />
+            <button class="eye-btn" onclick="toggleEye('rc-admin-pass',this)">👁</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">تأكيد كلمة المرور *</label>
+          <div class="field-wrap has-eye">
+            <span class="icon">🔐</span>
+            <input type="password" id="rc-admin-pass2" placeholder="أعد كتابة كلمة المرور" />
+            <button class="eye-btn" onclick="toggleEye('rc-admin-pass2',this)">👁</button>
+          </div>
+        </div>
+        <div id="rc-msg2" class="msg msg-error"><span>⚠️</span><span id="rc-msg2-text"></span></div>
+        <button class="btn btn-success" id="rc-submit-btn" onclick="doRegisterCompany()">
+          🏢 تسجيل الشركة الآن
+        </button>
+        <button class="btn btn-ghost" style="margin-top:10px" onclick="rcPrevStep()">← العودة لبيانات الشركة</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 4: FORGOT PASSWORD
+═══════════════════════════════════════════════════ -->
+<div id="screen-forgot" class="screen">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+        <button class="btn btn-ghost btn-sm" style="width:auto;padding:8px 12px" onclick="goTo('screen-login')">← رجوع</button>
+        <div style="flex:1; text-align:center;">
+          <div style="font-size:17px; font-weight:800;">🔑 استعادة الحساب</div>
+          <div class="text-sec">سنرسل رمز تحقق على واتساب</div>
+        </div>
+        <div style="width:70px;"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">شركة الكهرباء</label>
+        <div class="field-wrap">
+          <span class="icon">🏢</span>
+          <select id="fp-company"><option value="">اختر الشركة...</option></select>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">رقم الجوال المسجل</label>
+        <div class="field-wrap">
+          <span class="icon">📱</span>
+          <input type="tel" id="fp-phone" placeholder="رقم الواتساب المسجل في حسابك" />
+        </div>
+      </div>
+      <div class="field-group" id="fp-meter-wrap">
+        <label class="field-label">رقم العداد</label>
+        <div class="field-wrap">
+          <span class="icon">⚡</span>
+          <input type="text" id="fp-meter" placeholder="رقم العداد (للمشتركين)" />
+        </div>
+      </div>
+      <div id="fp-msg" class="msg msg-error"><span>⚠️</span><span id="fp-msg-text"></span></div>
+      <div id="fp-ok" class="msg msg-success" style="display:none"><span>✅</span><span>تم إرسال رمز التحقق على واتساب</span></div>
+      <button class="btn btn-primary" id="fp-btn" onclick="doForgot()">إرسال رمز التحقق 📲</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 5: CUSTOMER DASHBOARD
+═══════════════════════════════════════════════════ -->
+<div id="screen-customer" class="screen">
+  <div style="display:flex; flex-direction:column; min-height:100vh;">
+    <div class="dash-header">
+      <div class="dash-logo">
+        <div class="dash-logo-icon">⚡</div>
+        <span>نظام الكهرباء</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="badge badge-blue" id="cust-role-badge">مشترك</span>
+        <button class="btn btn-ghost btn-sm" style="width:auto" onclick="doLogout()">خروج 🚪</button>
+      </div>
+    </div>
+    <div class="dash-main">
+      <div class="welcome-card">
+        <div class="welcome-title">🏠 مرحباً، <span id="cust-name">—</span>!</div>
+        <div class="welcome-sub">يمكنك متابعة حساباتك وفواتيرك من هنا</div>
+        <div style="margin-top:14px; font-size:12px; color:var(--text-muted);">
+          🏢 <span id="cust-company">—</span>
+          &nbsp;·&nbsp;
+          ⚡ رقم العداد: <span id="cust-meter">—</span>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue">📄</div>
+          <div><div class="stat-val" id="cust-bills">0</div><div class="stat-lbl">الفواتير الكلية</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon yellow">⏳</div>
+          <div><div class="stat-val" id="cust-unpaid">0</div><div class="stat-lbl">غير مسددة</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">✅</div>
+          <div><div class="stat-val" id="cust-paid">0</div><div class="stat-lbl">مدفوعة</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">💰</div>
+          <div><div class="stat-val" id="cust-total">0</div><div class="stat-lbl">إجمالي المستحق (ر.س)</div></div>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:40px;">
+        🚧 لوحة تحكم المشترك — قيد التطوير
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 6: EMPLOYEE DASHBOARD
+═══════════════════════════════════════════════════ -->
+<div id="screen-employee" class="screen">
+  <div style="display:flex; flex-direction:column; min-height:100vh;">
+    <div class="dash-header">
+      <div class="dash-logo">
+        <div class="dash-logo-icon">⚡</div>
+        <span>نظام الكهرباء</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="badge badge-green" id="emp-role-badge">موظف</span>
+        <button class="btn btn-ghost btn-sm" style="width:auto" onclick="doLogout()">خروج 🚪</button>
+      </div>
+    </div>
+    <div class="dash-main">
+      <div class="welcome-card">
+        <div class="welcome-title">👔 مرحباً، <span id="emp-name">—</span>!</div>
+        <div class="welcome-sub">لوحة تحكم <span id="emp-role-text">—</span></div>
+        <div style="margin-top:14px; font-size:12px; color:var(--text-muted);">
+          🏢 <span id="emp-company">—</span>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue">👥</div>
+          <div><div class="stat-val">—</div><div class="stat-lbl">المشتركين</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">📊</div>
+          <div><div class="stat-val">—</div><div class="stat-lbl">قراءات اليوم</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon yellow">📋</div>
+          <div><div class="stat-val">—</div><div class="stat-lbl">الفواتير</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">🔧</div>
+          <div><div class="stat-val">—</div><div class="stat-lbl">الشكاوى</div></div>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:40px;">
+        🚧 لوحة التحكم الوظيفية — قيد التطوير
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SUCCESS MODAL
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="success-modal">
+  <div class="modal">
+    <div class="modal-icon">🎉</div>
+    <div class="modal-title" id="modal-title">تم بنجاح!</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="modal-detail" id="modal-detail" style="display:none;"></div>
+    <button class="btn btn-primary" onclick="closeModal()">حسناً، انتقل لتسجيل الدخول</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════ -->
+<script>
+// ── Config ──────────────────────────────────────────────────
+const API = ''; // Same origin
+let currentUser = null;
+let companies = [];
+let userType = 'customer'; // 'customer' | 'employee'
+
+// ── Helpers ──────────────────────────────────────────────────
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function toggleEye(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  if (loading) {
+    btn.dataset.orig = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner"></div>';
+  } else {
+    btn.innerHTML = btn.dataset.orig || btn.innerHTML;
+  }
+}
+
+function showMsg(msgId, textId, text, type = 'error') {
+  const el = document.getElementById(msgId);
+  const tel = document.getElementById(textId);
+  el.className = `msg msg-${type} show`;
+  tel.textContent = text;
+}
+function hideMsg(msgId) {
+  document.getElementById(msgId)?.classList.remove('show');
+}
+
+async function apiFetch(path, body = null, method = 'POST') {
+  const opts = {
+    method, headers: { 'Content-Type': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}/api${path}`, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'حدث خطأ في الخادم');
+  return data;
+}
+
+// ── Companies ────────────────────────────────────────────────
+async function loadCompanies() {
+  try {
+    const data = await apiFetch('/auth/companies', null, 'GET');
+    companies = data.data || [];
+    const selects = ['login-company', 'reg-company', 'fp-company'];
+    selects.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = companies.length
+        ? companies.map(c => `<option value="${c.company_code}">${c.company_name}</option>`).join('')
+        : '<option value="">لا توجد شركات</option>';
+    });
+  } catch (e) {
+    console.warn('Could not load companies:', e.message);
+  }
+}
+
+// ── Auth: User Type Toggle ───────────────────────────────────
+function setUserType(type) {
+  userType = type;
+  document.getElementById('tab-customer').classList.toggle('active', type === 'customer');
+  document.getElementById('tab-employee').classList.toggle('active', type === 'employee');
+  document.getElementById('meter-field').style.display = type === 'customer' ? '' : 'none';
+  document.getElementById('register-subscriber-wrap').style.display = type === 'customer' ? '' : 'none';
+}
+
+// ── Login ────────────────────────────────────────────────────
+async function doLogin() {
+  hideMsg('login-msg');
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const companyCode = document.getElementById('login-company').value;
+  const meter = document.getElementById('login-meter').value.trim();
+
+  if (!username || !password) return showMsg('login-msg', 'login-msg-text', 'يرجى إدخال اسم المستخدم وكلمة المرور');
+  if (!companyCode) return showMsg('login-msg', 'login-msg-text', 'يرجى اختيار شركة الكهرباء');
+
+  setLoading('login-btn', true);
+  try {
+    const body = { username, password, meter_number: meter || undefined };
+    const res = await fetch(`${API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Company-Code': companyCode },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'فشل تسجيل الدخول');
+
+    localStorage.setItem('jwt', data.data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.data.user));
+    currentUser = data.data.user;
+    redirectAfterLogin(currentUser);
+  } catch (e) {
+    showMsg('login-msg', 'login-msg-text', e.message);
+  } finally {
+    setLoading('login-btn', false);
+  }
+}
+
+function redirectAfterLogin(user) {
+  if (user.role === 'customer') {
+    document.getElementById('cust-name').textContent = user.full_name || user.username;
+    document.getElementById('cust-company').textContent = user.company_name || '—';
+    document.getElementById('cust-meter').textContent = '—';
+    goTo('screen-customer');
+  } else {
+    const roleNames = {
+      admin: 'مشرف النظام', technician: 'فني', accountant: 'محاسب', reader: 'قارئ عدادات'
+    };
+    document.getElementById('emp-name').textContent = user.full_name || user.username;
+    document.getElementById('emp-company').textContent = user.company_name || '—';
+    document.getElementById('emp-role-text').textContent = roleNames[user.role] || user.role;
+    document.getElementById('emp-role-badge').textContent = roleNames[user.role] || user.role;
+    goTo('screen-employee');
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('user');
+  currentUser = null;
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  goTo('screen-login');
+}
+
+// ── Register Subscriber ──────────────────────────────────────
+async function doRegister() {
+  hideMsg('reg-msg');
+  const company = document.getElementById('reg-company').value;
+  const name = document.getElementById('reg-name').value.trim();
+  const username = document.getElementById('reg-username').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const meter = document.getElementById('reg-meter').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+
+  if (!company) return showMsg('reg-msg', 'reg-msg-text', 'يرجى اختيار شركة الكهرباء');
+  if (!name || !username || !phone || !meter || !pass) return showMsg('reg-msg', 'reg-msg-text', 'يرجى إدخال جميع الحقول الإلزامية');
+  if (pass.length < 8) return showMsg('reg-msg', 'reg-msg-text', 'كلمة المرور يجب ألا تقل عن 8 أحرف');
+
+  setLoading('reg-btn', true);
+  try {
+    await apiFetch('/auth/register', { full_name: name, username, phone_number: phone, meter_number: meter, email: email || null, password: pass, company_code: company });
+    showSuccessModal('🎉 تم إنشاء الحساب!', 'تم تسجيل حسابك كمشترك بنجاح. يمكنك الآن تسجيل الدخول.', null);
+    setTimeout(() => { closeModal(); goTo('screen-login'); }, 3500);
+  } catch (e) {
+    showMsg('reg-msg', 'reg-msg-text', e.message);
+  } finally {
+    setLoading('reg-btn', false);
+  }
+}
+
+// ── Register Company ─────────────────────────────────────────
+function rcNextStep() {
+  const name = document.getElementById('rc-name').value.trim();
+  const code = document.getElementById('rc-code').value.trim().toUpperCase();
+  const phone = document.getElementById('rc-phone').value.trim();
+
+  if (!name) return showMsg('rc-msg1', 'rc-msg1-text', 'يرجى إدخال اسم الشركة');
+  if (!code || !/^[A-Z0-9_]{3,20}$/.test(code)) return showMsg('rc-msg1', 'rc-msg1-text', 'رمز الشركة يجب أن يكون 3-20 حرف إنجليزي وأرقام فقط');
+  if (!phone) return showMsg('rc-msg1', 'rc-msg1-text', 'رقم الهاتف مطلوب');
+
+  hideMsg('rc-msg1');
+  document.getElementById('rc-company-preview').textContent = name;
+  document.getElementById('rc-step1').style.display = 'none';
+  document.getElementById('rc-step2').style.display = '';
+  document.getElementById('rc-sub').textContent = 'الخطوة 2 من 2 · حساب المشرف';
+  document.getElementById('step1-bar').className = 'step-bar done';
+  document.getElementById('step2-bar').className = 'step-bar active';
+}
+function rcPrevStep() {
+  document.getElementById('rc-step2').style.display = 'none';
+  document.getElementById('rc-step1').style.display = '';
+  document.getElementById('rc-sub').textContent = 'الخطوة 1 من 2 · بيانات الشركة';
+  document.getElementById('step1-bar').className = 'step-bar active';
+  document.getElementById('step2-bar').className = 'step-bar';
+}
+
+function autoCode(name) {
+  const words = name.trim().toUpperCase().split(/\s+/).filter(w => /^[A-Z]/.test(w));
+  let code = words.slice(0, 3).join('_').replace(/[^A-Z0-9_]/g, '');
+  if (!code && name.trim()) code = name.trim().replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
+  const codeField = document.getElementById('rc-code');
+  const preview = document.getElementById('code-preview');
+  if (code && !codeField.dataset.edited) codeField.value = code;
+  preview.textContent = codeField.value || '—';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('rc-code')?.addEventListener('input', (e) => {
+    e.target.dataset.edited = '1';
+    document.getElementById('code-preview').textContent = e.target.value || '—';
+  });
+});
+
+async function doRegisterCompany() {
+  hideMsg('rc-msg2');
+  const adminName = document.getElementById('rc-admin-name').value.trim();
+  const adminUser = document.getElementById('rc-admin-user').value.trim();
+  const adminPass = document.getElementById('rc-admin-pass').value;
+  const adminPass2 = document.getElementById('rc-admin-pass2').value;
+
+  if (!adminName || !adminUser || !adminPass || !adminPass2) return showMsg('rc-msg2', 'rc-msg2-text', 'يرجى إدخال جميع بيانات حساب المشرف');
+  if (adminPass.length < 8) return showMsg('rc-msg2', 'rc-msg2-text', 'كلمة المرور يجب ألا تقل عن 8 أحرف');
+  if (adminPass !== adminPass2) return showMsg('rc-msg2', 'rc-msg2-text', 'كلمتا المرور غير متطابقتين');
+
+  setLoading('rc-submit-btn', true);
+  try {
+    const body = {
+      company_name: document.getElementById('rc-name').value.trim(),
+      company_code: document.getElementById('rc-code').value.trim().toUpperCase(),
+      phone_number: document.getElementById('rc-phone').value.trim(),
+      email: document.getElementById('rc-email').value.trim() || null,
+      license_number: document.getElementById('rc-license').value.trim() || null,
+      address: document.getElementById('rc-address').value.trim() || null,
+      admin_full_name: adminName,
+      admin_username: adminUser,
+      admin_password: adminPass,
+    };
+    const data = await apiFetch('/auth/register-company', body);
+    const company = data.data?.company;
+    const admin = data.data?.admin;
+    const detail = document.getElementById('modal-detail');
+    detail.style.display = '';
+    detail.innerHTML = `
+      <div class="modal-row"><span>🏢</span><span class="lbl">الشركة:</span><span class="val">${company?.company_name || '—'}</span></div>
+      <div class="modal-row"><span>🔤</span><span class="lbl">الرمز:</span><span class="val">${company?.company_code || '—'}</span></div>
+      <div class="modal-row"><span>👤</span><span class="lbl">المشرف:</span><span class="val">${admin?.username || '—'}</span></div>
+    `;
+    showSuccessModal('🏢 تم تسجيل الشركة!', 'احتفظ ببيانات حساب المشرف في مكان آمن');
+    loadCompanies(); // Refresh companies list
+  } catch (e) {
+    showMsg('rc-msg2', 'rc-msg2-text', e.message);
+  } finally {
+    setLoading('rc-submit-btn', false);
+  }
+}
+
+// ── Forgot Password ──────────────────────────────────────────
+async function doForgot() {
+  hideMsg('fp-msg');
+  document.getElementById('fp-ok').style.display = 'none';
+  const company = document.getElementById('fp-company').value;
+  const phone = document.getElementById('fp-phone').value.trim();
+  const meter = document.getElementById('fp-meter').value.trim();
+
+  if (!company || !phone) return showMsg('fp-msg', 'fp-msg-text', 'يرجى اختيار الشركة وإدخال رقم الجوال');
+
+  setLoading('fp-btn', true);
+  try {
+    await apiFetch('/auth/forgot-password', { phone_number: phone, meter_number: meter || undefined, company_code: company });
+    document.getElementById('fp-ok').style.display = 'flex';
+  } catch (e) {
+    showMsg('fp-msg', 'fp-msg-text', e.message);
+  } finally {
+    setLoading('fp-btn', false);
+  }
+}
+
+// ── Modal ────────────────────────────────────────────────────
+function showSuccessModal(title, sub, detailHtml = null) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-sub').textContent = sub;
+  const det = document.getElementById('modal-detail');
+  if (detailHtml === null) det.style.display = 'none';
+  document.getElementById('success-modal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('success-modal').classList.remove('show');
+  goTo('screen-login');
+}
+
+// ── Auto-login if token exists ───────────────────────────────
+function checkExistingSession() {
+  const token = localStorage.getItem('jwt');
+  const userStr = localStorage.getItem('user');
+  if (token && userStr) {
+    try {
+      currentUser = JSON.parse(userStr);
+      redirectAfterLogin(currentUser);
+    } catch (e) { localStorage.clear(); }
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Register Service Worker for PWA / Installable App features
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('Service Worker Registered'))
+      .catch(err => console.warn('SW registration failed:', err));
+  }
+
+  loadCompanies();
+  checkExistingSession();
+  setUserType('customer');
+  // Enter key support
+  document.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      const active = document.querySelector('.screen.active');
+      if (!active) return;
+      if (active.id === 'screen-login') doLogin();
+      else if (active.id === 'screen-register') doRegister();
+      else if (active.id === 'screen-forgot') doForgot();
+    }
+  });
+});
+</script>
+</body>
+</html>
