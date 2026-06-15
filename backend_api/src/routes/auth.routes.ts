@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { 
   login, 
   register,
@@ -15,6 +16,15 @@ import { requireTenantAuth } from '../middleware/tenant.middleware';
 
 const router = Router();
 
+// [HIGH-03] Rate Limiter مشدد لتسجيل شركات جديدة — 3 محاولات فقط/ساعة
+const registerCompanyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'تجاوزت الحد المسموح لتسجيل الشركات، حاول مرة أخرى بعد ساعة' },
+});
+
 // GET /api/auth/companies - جلب جميع شركات الكهرباء التجارية النشطة
 router.get('/companies', getCompanies);
 
@@ -25,7 +35,7 @@ router.post('/login', login);
 router.post('/register', register);
 
 // POST /api/auth/register-company - تسجيل شركة كهرباء جديدة مع حساب المشرف
-router.post('/register-company', registerCompany);
+router.post('/register-company', registerCompanyLimiter, registerCompany);
 
 // POST /api/auth/forgot-password - طلب رمز التحقق لاستعادة الحساب
 router.post('/forgot-password', forgotPassword);

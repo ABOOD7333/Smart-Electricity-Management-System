@@ -6,6 +6,25 @@ import { query } from '../database/connection';
 import { TenantRequest } from '../middleware/tenant.middleware';
 
 // ============================================================
+// [CRIT-01] Helper: مفتاح JWT آمن بدون fallback
+// ============================================================
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is not configured in environment variables');
+  return secret;
+};
+
+// ============================================================
+// [LOW-03] تحقق من قوة كلمة المرور
+// ============================================================
+const validatePasswordStrength = (password: string): string | null => {
+  if (password.length < 8) return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+  if (!/[A-Z]/.test(password)) return 'كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل';
+  if (!/[0-9]/.test(password)) return 'كلمة المرور يجب أن تحتوي على رقم واحد على الأقل';
+  return null;
+};
+
+// ============================================================
 // 1. تسجيل الدخول (Login) مع عزل الشركات
 // ============================================================
 export const login = async (req: TenantRequest, res: Response): Promise<void> => {
@@ -57,7 +76,7 @@ export const login = async (req: TenantRequest, res: Response): Promise<void> =>
 
     const accessToken = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET || 'secret',
+      getJwtSecret(),
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as jwt.SignOptions
     );
 
@@ -203,7 +222,7 @@ export const register = async (req: TenantRequest, res: Response): Promise<void>
 
     const accessToken = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET || 'secret',
+      getJwtSecret(),
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as jwt.SignOptions
     );
 
@@ -288,23 +307,21 @@ export const forgotPassword = async (req: TenantRequest, res: Response): Promise
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // صالح لمدة 5 دقائق
 
-    // تخزين الرمز في قاعدة البيانات
+    // [MED-04] تخزين هاش OTP بدلاً من الرمز بنص صريح
+    const otpHash = await bcrypt.hash(otpCode, 8);
     await query(
       `INSERT INTO otp_verifications (company_id, phone_number, otp_code, expires_at)
        VALUES ($1, $2, $3, $4)`,
-      [activeCompanyId, phone_number, otpCode, expiresAt]
+      [activeCompanyId, phone_number, otpHash, expiresAt]
     );
 
-    // محاكاة إرسال الـ OTP للتطوير المحلي (طباعة الكود وإرجاعه مؤقتاً في استجابة الـ API)
-    console.log(`\n============== MOCK OTP SMS SENDER ==============`);
-    console.log(`To: ${phone_number}`);
-    console.log(`Message: رمز التحقق الخاص بك لمنصة SEMS هو: ${otpCode}. ينتهي خلال 5 دقائق.`);
-    console.log(`=================================================\n`);
+    // [LOW-01] لا نكشف رقم الهاتف أو الكود في اللوجس
+    console.log(`\n[DEV] OTP generated for verification request`);
 
+    // [HIGH-02] لا نُظهِر OTP في الاستجابة أبداً — حتى في بيئة التطوير
     res.status(200).json({
       success: true,
       message: 'تم إرسال رمز التحقق (OTP) بنجاح إلى رقم جوالك المسجل',
-      mockOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined // إظهار الكود فقط للتطوير المريح
     });
   } catch (error) {
     console.error('❌ Forgot password error:', error);
@@ -370,8 +387,9 @@ export const verifyOtp = async (req: TenantRequest, res: Response): Promise<void
       [verification.verification_id]
     );
 
-    // التحقق من صحة الرمز
-    if (verification.otp_code !== otp_code) {
+    // [MED-04] التحقق من صحة الرمز باستخدام bcrypt.compare
+    const isValidOtp = await bcrypt.compare(otp_code, verification.otp_code);
+    if (!isValidOtp) {
       res.status(400).json({ success: false, message: 'رمز التحقق غير صحيح. يرجى المحاولة مجدداً' });
       return;
     }
@@ -582,10 +600,12 @@ export const registerCompany = async (req: Request, res: Response): Promise<void
     return;
   }
 
-  if (admin_password.length < 8) {
-    res.status(400).json({ success: false, message: 'كلمة مرور المشرف يجب أن تكون 8 أحرف على الأقل' });
-    return;
-  }
+    // [LOW-03] التحقق من قوة كلمة المرور
+    const passwordError = validatePasswordStrength(admin_password);
+    if (passwordError) {
+      res.status(400).json({ success: false, message: passwordError });
+      return;
+    }
 
   try {
     // أ. التحقق من عدم تكرار رمز الشركة
@@ -777,7 +797,12 @@ export const getCompanies = async (req: Request, res: Response): Promise<void> =
 // 10. إعادة تعيين بيانات مدير الشركة (Admin Reset - محمي بمفتاح سري)
 // ============================================================
 export const resetAdminCredentials = async (req: Request, res: Response): Promise<void> => {
-  const MASTER_KEY = process.env.MASTER_RESET_KEY || 'SEMS_MASTER_2026_RESET';
+  // [CRIT-02] لا fallback ثابت لمفتاح إعادة التعيين
+  const MASTER_KEY = process.env.MASTER_RESET_KEY;
+  if (!MASTER_KEY) {
+    res.status(503).json({ success: false, message: 'هذه الخدمة غير متاحة حالياً' });
+    return;
+  }
   const { master_key, updates } = req.body;
 
   if (master_key !== MASTER_KEY) {

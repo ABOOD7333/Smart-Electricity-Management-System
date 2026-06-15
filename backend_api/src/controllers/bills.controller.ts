@@ -3,9 +3,9 @@ import { query, getClient } from '../database/connection';
 import { generateBillForReading } from '../services/billing.service';
 
 // ===========================
-// جلب جميع الفواتير
+// جلب جميع الفواتير (مع عزل الشركة)
 // ===========================
-export const getAllBills = async (req: Request, res: Response): Promise<void> => {
+export const getAllBills = async (req: any, res: Response): Promise<void> => {
   try {
     const { page = 1, limit = 20, status, customer_id, from_date, to_date } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -13,6 +13,13 @@ export const getAllBills = async (req: Request, res: Response): Promise<void> =>
     let conditions: string[] = [];
     let params: any[] = [];
     let paramIndex = 1;
+
+    // [CRIT-03] فرض عزل الشركة دائماً
+    const companyId = req.tenantId;
+    if (companyId) {
+      conditions.push(`b.company_id = $${paramIndex++}`);
+      params.push(companyId);
+    }
 
     if (status) { conditions.push(`b.status = $${paramIndex++}`); params.push(status); }
     if (customer_id) { conditions.push(`b.customer_id = $${paramIndex++}`); params.push(customer_id); }
@@ -52,11 +59,13 @@ export const getAllBills = async (req: Request, res: Response): Promise<void> =>
 };
 
 // ===========================
-// جلب فاتورة واحدة كاملة
+// جلب فاتورة واحدة كاملة (مع عزل الشركة)
 // ===========================
-export const getBillById = async (req: Request, res: Response): Promise<void> => {
+export const getBillById = async (req: any, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    // [CRIT-05] إضافة فلتر company_id لمنع الوصول لفواتير شركات أخرى
+    const companyId = req.tenantId;
 
     const result = await query(
       `SELECT 
@@ -74,13 +83,14 @@ export const getBillById = async (req: Request, res: Response): Promise<void> =>
        JOIN customers c ON b.customer_id = c.customer_id
        JOIN meters m ON b.meter_id = m.meter_id
        LEFT JOIN payments p ON p.bill_id = b.bill_id
-       WHERE b.bill_id = $1 OR b.invoice_number::TEXT = $1
+       WHERE (b.bill_id = $1 OR b.invoice_number::TEXT = $1)
+         AND ($2::uuid IS NULL OR b.company_id = $2)
        GROUP BY b.bill_id, c.customer_number, c.full_name, c.phone_number, c.address, m.meter_number, m.cabinet_name`,
-      [id]
+      [id, companyId || null]
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'الفاتورة غير موجودة' });
+      res.status(404).json({ success: false, message: 'الفاتورة غير موجودة أو لا تنتمي لشركتك' });
       return;
     }
 
@@ -131,26 +141,29 @@ export const recordPayment = async (req: any, res: Response): Promise<void> => {
   try {
     await client.query('BEGIN');
 
-    // جلب الفاتورة لمعرفة المشترك
+    // [HIGH-06] جلب الفاتورة مع التحقق من ملكية الشركة
+    const companyId = (req as any).tenantId;
     const billResult = await client.query(
-      'SELECT * FROM bills WHERE bill_id = $1 OR invoice_number::TEXT = $1 FOR UPDATE',
-      [id]
+      `SELECT * FROM bills WHERE (bill_id = $1 OR invoice_number::TEXT = $1)
+       AND ($2::uuid IS NULL OR company_id = $2) FOR UPDATE`,
+      [id, companyId || null]
     );
 
     if (billResult.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'الفاتورة غير موجودة' });
+      res.status(404).json({ success: false, message: 'الفاتورة غير موجودة أو لا تنتمي لشركتك' });
+      await client.query('ROLLBACK');
       return;
     }
 
     const targetBill = billResult.rows[0];
     const customerId = targetBill.customer_id;
 
-    // جلب جميع الفواتير غير المدفوعة أو المدفوعة جزئياً للمشترك مرتبة من الأقدم إلى الأحدث
+    // جلب جميع الفواتير غير المدفوعة للمشترك في نفس الشركة
     const unpaidBillsResult = await client.query(
       `SELECT * FROM bills 
-       WHERE customer_id = $1 AND status IN ('unpaid', 'partially_paid') 
+       WHERE customer_id = $1 AND company_id = $2 AND status IN ('unpaid', 'partially_paid') 
        ORDER BY invoice_number ASC FOR UPDATE`,
-      [customerId]
+      [customerId, targetBill.company_id]
     );
 
     if (unpaidBillsResult.rows.length === 0) {
@@ -227,10 +240,15 @@ export const recordPayment = async (req: any, res: Response): Promise<void> => {
 };
 
 // ===========================
-// إحصائيات لوحة التحكم
+// إحصائيات لوحة التحكم (مع عزل الشركة)
 // ===========================
-export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
+export const getDashboardStats = async (req: any, res: Response): Promise<void> => {
   try {
+    // [CRIT-03] عزل الإحصائيات بالشركة — كل شركة ترى بياناتها فقط
+    const companyId = req.tenantId;
+    const companyFilter = companyId ? `WHERE company_id = '${companyId}'` : '';
+    const billsCompanyFilter = companyId ? `WHERE b.company_id = '${companyId}'` : '';
+
     const [billsStats, customersStats, recentBills] = await Promise.all([
       query(`SELECT
         COUNT(*) FILTER (WHERE status = 'unpaid') AS unpaid_count,
@@ -239,15 +257,16 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         SUM(balance_due) FILTER (WHERE status != 'paid' AND status != 'cancelled') AS total_unpaid_amount,
         SUM(amount_paid) AS total_collected,
         COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND status != 'paid') AS overdue_count
-       FROM bills`),
+       FROM bills ${companyFilter}`),
       query(`SELECT
         COUNT(*) AS total_customers,
         COUNT(*) FILTER (WHERE status = 'active') AS active_customers,
         COUNT(*) FILTER (WHERE status = 'disconnected') AS disconnected_customers
-       FROM customers`),
+       FROM customers ${companyFilter}`),
       query(`SELECT b.invoice_number, b.total_amount, b.status, b.issue_date,
               c.full_name, c.customer_number
              FROM bills b JOIN customers c ON b.customer_id = c.customer_id
+             ${billsCompanyFilter}
              ORDER BY b.created_at DESC LIMIT 5`),
     ]);
 

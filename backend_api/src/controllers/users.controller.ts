@@ -3,17 +3,21 @@ import bcrypt from 'bcryptjs';
 import { query } from '../database/connection';
 
 // ===========================
-// جلب جميع المستخدمين
+// جلب جميع المستخدمين (مع عزل الشركة)
 // ===========================
-export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+export const getAllUsers = async (req: any, res: Response): Promise<void> => {
   try {
+    // [CRIT-04] عزل المستخدمين بالشركة — كل مدير يرى موظفيه فقط
+    const companyId = req.tenantId;
     const result = await query(
       `SELECT u.user_id, u.full_name, u.username, u.email, u.phone_number,
               u.role, u.is_active, u.last_login, u.created_at,
               z.zone_name
        FROM users u
        LEFT JOIN zones z ON u.zone_id = z.zone_id
-       ORDER BY u.created_at DESC`
+       WHERE ($1::uuid IS NULL OR u.company_id = $1)
+       ORDER BY u.created_at DESC`,
+      [companyId || null]
     );
     res.status(200).json({ success: true, data: result.rows });
   } catch (error) {
@@ -22,9 +26,9 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 };
 
 // ===========================
-// إضافة مستخدم جديد
+// إضافة مستخدم جديد (مع عزل الشركة)
 // ===========================
-export const createUser = async (req: Request, res: Response): Promise<void> => {
+export const createUser = async (req: any, res: Response): Promise<void> => {
   const { full_name, username, email, phone_number, password, role, zone_id } = req.body;
 
   if (!full_name || !username || !password || !role) {
@@ -37,8 +41,15 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
+  // [MED-01] التحقق من وجود company_id قبل إنشاء المستخدم
+  const companyId = req.tenantId;
+  if (!companyId) {
+    res.status(400).json({ success: false, message: 'تعذر تحديد سياق الشركة' });
+    return;
+  }
+
   try {
-    const existing = await query('SELECT user_id FROM users WHERE username = $1', [username]);
+    const existing = await query('SELECT user_id FROM users WHERE username = $1 AND company_id = $2', [username, companyId]);
     if (existing.rows.length > 0) {
       res.status(409).json({ success: false, message: `اسم المستخدم "${username}" مستخدم مسبقاً` });
       return;
@@ -47,10 +58,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const password_hash = await bcrypt.hash(password, 12);
 
     const result = await query(
-      `INSERT INTO users (full_name, username, email, phone_number, password_hash, role, zone_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO users (full_name, username, email, phone_number, password_hash, role, zone_id, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING user_id, full_name, username, email, role, zone_id, created_at`,
-      [full_name, username, email, phone_number, password_hash, role, zone_id]
+      [full_name, username, email, phone_number, password_hash, role, zone_id, companyId]
     );
 
     res.status(201).json({
@@ -64,19 +75,22 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 };
 
 // ===========================
-// تفعيل / تعطيل مستخدم
+// تفعيل / تعطيل مستخدم (مع عزل الشركة)
 // ===========================
-export const toggleUserStatus = async (req: Request, res: Response): Promise<void> => {
+export const toggleUserStatus = async (req: any, res: Response): Promise<void> => {
   const { id } = req.params;
+  // [MED-02] التحقق من أن المستخدم ينتمي لنفس الشركة
+  const companyId = req.tenantId;
   try {
     const result = await query(
-      `UPDATE users SET is_active = NOT is_active WHERE user_id = $1
+      `UPDATE users SET is_active = NOT is_active
+       WHERE user_id = $1 AND ($2::uuid IS NULL OR company_id = $2)
        RETURNING user_id, full_name, username, is_active`,
-      [id]
+      [id, companyId || null]
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
+      res.status(404).json({ success: false, message: 'المستخدم غير موجود أو لا ينتمي لشركتك' });
       return;
     }
 
@@ -92,11 +106,13 @@ export const toggleUserStatus = async (req: Request, res: Response): Promise<voi
 };
 
 // ===========================
-// إعادة تعيين كلمة مرور
+// إعادة تعيين كلمة مرور (مع عزل الشركة)
 // ===========================
-export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+export const resetPassword = async (req: any, res: Response): Promise<void> => {
   const { id } = req.params;
   const { new_password } = req.body;
+  // [MED-03] التحقق من أن المستخدم ينتمي لشركة المدير
+  const companyId = req.tenantId;
 
   if (!new_password || new_password.length < 8) {
     res.status(400).json({ success: false, message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' });
@@ -106,13 +122,14 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
   try {
     const password_hash = await bcrypt.hash(new_password, 12);
     const result = await query(
-      `UPDATE users SET password_hash = $1 WHERE user_id = $2
+      `UPDATE users SET password_hash = $1
+       WHERE user_id = $2 AND ($3::uuid IS NULL OR company_id = $3)
        RETURNING full_name, username`,
-      [password_hash, id]
+      [password_hash, id, companyId || null]
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
+      res.status(404).json({ success: false, message: 'المستخدم غير موجود أو لا ينتمي لشركتك' });
       return;
     }
 

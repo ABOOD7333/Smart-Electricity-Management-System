@@ -22,10 +22,18 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     return;
   }
 
+  // [CRIT-01] التحقق من وجود مفتاح JWT — لا fallback ثابت
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    console.error('❌ FATAL: JWT_SECRET is not set in environment variables!');
+    res.status(500).json({ success: false, message: 'خطأ في إعداد الخادم' });
+    return;
+  }
+
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    const decoded = jwt.verify(token, jwtSecret) as any;
     req.user = decoded;
     next();
   } catch (error) {

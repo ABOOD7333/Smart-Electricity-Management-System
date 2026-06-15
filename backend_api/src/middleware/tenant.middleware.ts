@@ -32,9 +32,11 @@ export const tenantContext = async (req: TenantRequest, res: Response, next: Nex
     }
   }
 
-  // 2. إذا لم يتم توفير معرف للشركة، نفترض وجود الشركة الافتراضية BPOWER كخلفية توافقية لعدم كسر النظام الحالي
+  // [HIGH-01] إذا لم يُرسل X-Company-Code نكمل بدون tenant context
+  // المسارات المحمية ستتحقق بنفسها من وجود company_id في التوكن
   if (!companyIdentifier) {
-    companyIdentifier = 'BPOWER';
+    next();
+    return;
   }
 
   try {
@@ -82,7 +84,13 @@ export const requireTenantAuth = (req: TenantRequest, res: Response, next: NextF
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    // [CRIT-01] لا fallback ثابت لمفتاح JWT
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      res.status(500).json({ success: false, message: 'خطأ في إعداد الخادم' });
+      return;
+    }
+    const decoded = jwt.verify(token, jwtSecret) as any;
 
     // التحقق من تطابق معرف الشركة المخزن في التوكن مع معرف الشركة في سياق الطلب الحالي
     if (decoded.company_id && req.tenantId && decoded.company_id !== req.tenantId) {

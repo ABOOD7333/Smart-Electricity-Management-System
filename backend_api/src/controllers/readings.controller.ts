@@ -44,22 +44,26 @@ export const createReading = async (req: any, res: Response): Promise<void> => {
 };
 
 // ===========================
-// جلب قراءات عداد معين
+// جلب قراءات عداد معين (مع عزل الشركة)
 // ===========================
-export const getMeterReadings = async (req: Request, res: Response): Promise<void> => {
+export const getMeterReadings = async (req: any, res: Response): Promise<void> => {
   const { meter_id } = req.params;
   const { limit = 10 } = req.query;
+  // [HIGH-04] التحقق من أن العداد ينتمي لشركة المستخدم
+  const companyId = req.tenantId;
 
   try {
     const result = await query(
       `SELECT 
         r.*, u.full_name AS technician_name
        FROM meter_readings r
+       JOIN meters m ON r.meter_id = m.meter_id
        JOIN users u ON r.technician_id = u.user_id
        WHERE r.meter_id = $1
+         AND ($2::uuid IS NULL OR m.company_id = $2)
        ORDER BY r.reading_date DESC
-       LIMIT $2`,
-      [meter_id, Number(limit)]
+       LIMIT $3`,
+      [meter_id, companyId || null, Number(limit)]
     );
 
     res.status(200).json({ success: true, data: result.rows });
@@ -69,22 +73,28 @@ export const getMeterReadings = async (req: Request, res: Response): Promise<voi
 };
 
 // ===========================
-// الموافقة على قراءة (المشرف)
+// الموافقة على قراءة (المشرف) مع عزل الشركة
 // ===========================
 export const approveReading = async (req: any, res: Response): Promise<void> => {
   const { reading_id } = req.params;
+  // [HIGH-05] التحقق من أن القراءة تنتمي لشركة المشرف
+  const companyId = req.tenantId;
 
   try {
     const result = await query(
       `UPDATE meter_readings 
        SET status = 'approved', approved_by = $1
        WHERE reading_id = $2
+         AND meter_id IN (
+           SELECT meter_id FROM meters
+           WHERE ($3::uuid IS NULL OR company_id = $3)
+         )
        RETURNING *`,
-      [req.user?.user_id, reading_id]
+      [req.user?.user_id, reading_id, companyId || null]
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'القراءة غير موجودة' });
+      res.status(404).json({ success: false, message: 'القراءة غير موجودة أو لا تنتمي لشركتك' });
       return;
     }
 
@@ -99,9 +109,11 @@ export const approveReading = async (req: any, res: Response): Promise<void> => 
 };
 
 // ===========================
-// قراءات الفنيين المعلقة (لوحة المشرف)
+// قراءات الفنيين المعلقة (مع عزل الشركة)
 // ===========================
-export const getPendingReadings = async (req: Request, res: Response): Promise<void> => {
+export const getPendingReadings = async (req: any, res: Response): Promise<void> => {
+  // [HIGH-04] عزل القراءات المعلقة بالشركة
+  const companyId = req.tenantId;
   try {
     const result = await query(
       `SELECT 
@@ -115,7 +127,9 @@ export const getPendingReadings = async (req: Request, res: Response): Promise<v
        JOIN customers c ON m.customer_id = c.customer_id
        JOIN users u ON r.technician_id = u.user_id
        WHERE r.status = 'pending'
-       ORDER BY r.reading_date DESC`
+         AND ($1::uuid IS NULL OR m.company_id = $1)
+       ORDER BY r.reading_date DESC`,
+      [companyId || null]
     );
 
     res.status(200).json({ success: true, data: result.rows });
