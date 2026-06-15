@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../features/technician/data/models/meter_task.dart';
 import '../../features/technician/data/models/offline_reading.dart';
 
-final isarProvider = Provider<Isar>((ref) {
+final isarProvider = Provider<Isar?>((ref) {
   throw UnimplementedError('Isar has not been initialized yet. Initialize it in main.dart');
 });
 
@@ -33,25 +34,35 @@ class IsarService {
     }
   }
 
-  static Future<Isar> init() async {
-    final dir = await getApplicationDocumentsDirectory();
+  static Future<Isar?> init() async {
+    if (kIsWeb) {
+      print('Running on Web: Isar database bypassed.');
+      return null;
+    }
     
-    // جلب مفتاح التشفير الآمن لتجهيز تفعيله بالكامل
-    final encryptionKey = await getOrCreateEncryptionKey();
-    
-    // We open Isar with our schemas. Note that the generated schema names will be:
-    // MeterTaskSchema and OfflineReadingSchema (imported from the models)
-    return await Isar.open(
-      [
-        MeterTaskSchema,
-        OfflineReadingSchema,
-      ],
-      directory: dir.path,
-      // ملاحظة: مع الانتقال إلى Isar v4 (باستخدام محرك SQLite)، يمكن تفعيل السطر التالي مباشرة
-      // لتشفير قاعدة البيانات المحلية بالكامل باستخدام المفتاح الآمن المسترد من الـ Secure Storage:
-      // name: 'sems_secure_db',
-      // encryptionKey: encryptionKey,
-    );
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      
+      // جلب مفتاح التشفير الآمن لتجهيز تفعيله بالكامل
+      final encryptionKey = await getOrCreateEncryptionKey();
+      
+      // We open Isar with our schemas. Note that the generated schema names will be:
+      // MeterTaskSchema and OfflineReadingSchema (imported from the models)
+      return await Isar.open(
+        [
+          MeterTaskSchema,
+          OfflineReadingSchema,
+        ],
+        directory: dir.path,
+        // ملاحظة: مع الانتقال إلى Isar v4 (باستخدام محرك SQLite)، يمكن تفعيل السطر التالي مباشرة
+        // لتشفير قاعدة البيانات المحلية بالكامل باستخدام المفتاح الآمن المسترد من الـ Secure Storage:
+        // name: 'sems_secure_db',
+        // encryptionKey: encryptionKey,
+      );
+    } catch (e) {
+      print('Failed to initialize Isar: $e');
+      return null;
+    }
   }
 }
 

@@ -55,11 +55,17 @@ class _MeterReadingScreenState extends ConsumerState<MeterReadingScreen> {
   Future<void> _loadMeterDetails() async {
     try {
       final isar = ref.read(isarProvider);
-      final task = await isar.meterTasks.filter().meterIdEqualTo(widget.meterId).findFirst();
-      setState(() {
-        _meterTask = task;
-        _isLoadingMeter = false;
-      });
+      if (isar != null) {
+        final task = await isar.meterTasks.filter().meterIdEqualTo(widget.meterId).findFirst();
+        setState(() {
+          _meterTask = task;
+          _isLoadingMeter = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingMeter = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoadingMeter = false;

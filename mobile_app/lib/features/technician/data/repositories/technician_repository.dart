@@ -17,7 +17,7 @@ final technicianRepositoryProvider = Provider<TechnicianRepository>((ref) {
 
 class TechnicianRepository {
   final Dio _dio;
-  final Isar _isar;
+  final Isar? _isar;
 
   TechnicianRepository(this._dio, this._isar);
 
@@ -50,12 +50,14 @@ class TechnicianRepository {
           }).toList();
 
           // Update local cache
-          await _isar.writeTxn(() async {
-            // Clear old tasks
-            await _isar.meterTasks.clear();
-            // Store new tasks
-            await _isar.meterTasks.putAll(tasks);
-          });
+          if (_isar != null) {
+            await _isar.writeTxn(() async {
+              // Clear old tasks
+              await _isar.meterTasks.clear();
+              // Store new tasks
+              await _isar.meterTasks.putAll(tasks);
+            });
+          }
 
           return tasks;
         }
@@ -65,7 +67,10 @@ class TechnicianRepository {
     }
 
     // Return from local cache
-    return await _isar.meterTasks.where().findAll();
+    if (_isar != null) {
+      return await _isar.meterTasks.where().findAll();
+    }
+    return [];
   }
 
   // Submit meter reading (Uploads directly if online, saves offline if offline)
@@ -136,9 +141,17 @@ class TechnicianRepository {
         ..imagePath = imagePath
         ..isSynced = false;
 
-      await _isar.writeTxn(() async {
-        await _isar.offlineReadings.put(offlineReading);
-      });
+      if (_isar != null) {
+        await _isar.writeTxn(() async {
+          await _isar.offlineReadings.put(offlineReading);
+        });
+      } else {
+        return {
+          'success': false,
+          'isOffline': true,
+          'error': 'التخزين المحلي غير مدعوم على هذه المنصة (متصفح الويب)',
+        };
+      }
 
       return {
         'success': true,
@@ -155,7 +168,10 @@ class TechnicianRepository {
 
   // Get pending offline readings
   Future<List<OfflineReading>> getPendingReadings() async {
-    return await _isar.offlineReadings.filter().isSyncedEqualTo(false).findAll();
+    if (_isar != null) {
+      return await _isar.offlineReadings.filter().isSyncedEqualTo(false).findAll();
+    }
+    return [];
   }
 
   // Trigger Offline Synchronization
@@ -199,9 +215,11 @@ class TechnicianRepository {
 
         if (response.statusCode == 200 || response.statusCode == 201) {
           // Mark as synced or delete from database
-          await _isar.writeTxn(() async {
-            await _isar.offlineReadings.delete(reading.id);
-          });
+          if (_isar != null) {
+            await _isar.writeTxn(() async {
+              await _isar.offlineReadings.delete(reading.id);
+            });
+          }
           syncedCount++;
         } else {
           failedCount++;
@@ -209,10 +227,12 @@ class TechnicianRepository {
       } catch (e) {
         failedCount++;
         // Update error text in local DB
-        await _isar.writeTxn(() async {
-          reading.syncError = e.toString();
-          await _isar.offlineReadings.put(reading);
-        });
+        if (_isar != null) {
+          await _isar.writeTxn(() async {
+            reading.syncError = e.toString();
+            await _isar.offlineReadings.put(reading);
+          });
+        }
       }
     }
 
