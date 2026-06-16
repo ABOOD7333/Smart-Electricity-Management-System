@@ -11,16 +11,18 @@ export const getAllUsers = async (req: any, res: Response): Promise<void> => {
     const companyId = req.tenantId;
     const result = await query(
       `SELECT u.user_id, u.full_name, u.username, u.email, u.phone_number,
-              u.role, u.is_active, u.last_login, u.created_at,
+              r.role_name AS role, u.is_active, u.last_login, u.created_at,
               z.zone_name
        FROM users u
        LEFT JOIN zones z ON u.zone_id = z.zone_id
+       LEFT JOIN roles r ON u.role_id = r.role_id
        WHERE ($1::uuid IS NULL OR u.company_id = $1)
        ORDER BY u.created_at DESC`,
       [companyId || null]
     );
     res.status(200).json({ success: true, data: result.rows });
   } catch (error) {
+    console.error('getAllUsers error:', error);
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };
@@ -55,21 +57,36 @@ export const createUser = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
+    const roleResult = await query(
+      'SELECT role_id FROM roles WHERE role_name = $1 AND company_id = $2',
+      [role, companyId]
+    );
+
+    if (roleResult.rows.length === 0) {
+      res.status(400).json({ success: false, message: `الدور الوظيفي "${role}" غير معرف في هذه الشركة` });
+      return;
+    }
+    const roleId = roleResult.rows[0].role_id;
+
     const password_hash = await bcrypt.hash(password, 12);
 
     const result = await query(
-      `INSERT INTO users (full_name, username, email, phone_number, password_hash, role, zone_id, company_id)
+      `INSERT INTO users (full_name, username, email, phone_number, password_hash, role_id, zone_id, company_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING user_id, full_name, username, email, role, zone_id, created_at`,
-      [full_name, username, email, phone_number, password_hash, role, zone_id, companyId]
+       RETURNING user_id, full_name, username, email, zone_id, created_at`,
+      [full_name, username, email || null, phone_number || null, password_hash, roleId, zone_id || null, companyId]
     );
 
     res.status(201).json({
       success: true,
       message: `تم إنشاء حساب ${full_name} (${role}) بنجاح`,
-      data: result.rows[0],
+      data: {
+        ...result.rows[0],
+        role
+      },
     });
   } catch (error) {
+    console.error('createUser error:', error);
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };

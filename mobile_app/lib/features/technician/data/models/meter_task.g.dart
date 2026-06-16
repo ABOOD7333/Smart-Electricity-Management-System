@@ -14,8 +14,8 @@ extension GetMeterTaskCollection on Isar {
 }
 
 const MeterTaskSchema = CollectionSchema(
-  name: r'MeterTask',
-  id: 9028738997379520512,
+  name: r'MeterTaskData',
+  id: 6074576976614999656,
   properties: {
     r'address': PropertySchema(
       id: 0,
@@ -64,9 +64,9 @@ const MeterTaskSchema = CollectionSchema(
   deserializeProp: _meterTaskDeserializeProp,
   idName: r'id',
   indexes: {
-    r'meterId': IndexSchema(
-      id: -1596511903527871488,
-      name: r'meterId',
+    r'meter_id_index': IndexSchema(
+      id: -1599907033753032694,
+      name: r'meter_id_index',
       unique: true,
       replace: true,
       properties: [
@@ -177,56 +177,56 @@ void _meterTaskAttach(IsarCollection<dynamic> col, Id id, MeterTask object) {
 
 extension MeterTaskByIndex on IsarCollection<MeterTask> {
   Future<MeterTask?> getByMeterId(String meterId) {
-    return getByIndex(r'meterId', [meterId]);
+    return getByIndex(r'meter_id_index', [meterId]);
   }
 
   MeterTask? getByMeterIdSync(String meterId) {
-    return getByIndexSync(r'meterId', [meterId]);
+    return getByIndexSync(r'meter_id_index', [meterId]);
   }
 
   Future<bool> deleteByMeterId(String meterId) {
-    return deleteByIndex(r'meterId', [meterId]);
+    return deleteByIndex(r'meter_id_index', [meterId]);
   }
 
   bool deleteByMeterIdSync(String meterId) {
-    return deleteByIndexSync(r'meterId', [meterId]);
+    return deleteByIndexSync(r'meter_id_index', [meterId]);
   }
 
   Future<List<MeterTask?>> getAllByMeterId(List<String> meterIdValues) {
     final values = meterIdValues.map((e) => [e]).toList();
-    return getAllByIndex(r'meterId', values);
+    return getAllByIndex(r'meter_id_index', values);
   }
 
   List<MeterTask?> getAllByMeterIdSync(List<String> meterIdValues) {
     final values = meterIdValues.map((e) => [e]).toList();
-    return getAllByIndexSync(r'meterId', values);
+    return getAllByIndexSync(r'meter_id_index', values);
   }
 
   Future<int> deleteAllByMeterId(List<String> meterIdValues) {
     final values = meterIdValues.map((e) => [e]).toList();
-    return deleteAllByIndex(r'meterId', values);
+    return deleteAllByIndex(r'meter_id_index', values);
   }
 
   int deleteAllByMeterIdSync(List<String> meterIdValues) {
     final values = meterIdValues.map((e) => [e]).toList();
-    return deleteAllByIndexSync(r'meterId', values);
+    return deleteAllByIndexSync(r'meter_id_index', values);
   }
 
   Future<Id> putByMeterId(MeterTask object) {
-    return putByIndex(r'meterId', object);
+    return putByIndex(r'meter_id_index', object);
   }
 
   Id putByMeterIdSync(MeterTask object, {bool saveLinks = true}) {
-    return putByIndexSync(r'meterId', object, saveLinks: saveLinks);
+    return putByIndexSync(r'meter_id_index', object, saveLinks: saveLinks);
   }
 
   Future<List<Id>> putAllByMeterId(List<MeterTask> objects) {
-    return putAllByIndex(r'meterId', objects);
+    return putAllByIndex(r'meter_id_index', objects);
   }
 
   List<Id> putAllByMeterIdSync(List<MeterTask> objects,
       {bool saveLinks = true}) {
-    return putAllByIndexSync(r'meterId', objects, saveLinks: saveLinks);
+    return putAllByIndexSync(r'meter_id_index', objects, saveLinks: saveLinks);
   }
 }
 
@@ -310,7 +310,7 @@ extension MeterTaskQueryWhere
       String meterId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'meterId',
+        indexName: r'meter_id_index',
         value: [meterId],
       ));
     });
@@ -322,13 +322,13 @@ extension MeterTaskQueryWhere
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'meterId',
+              indexName: r'meter_id_index',
               lower: [],
               upper: [meterId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'meterId',
+              indexName: r'meter_id_index',
               lower: [meterId],
               includeLower: false,
               upper: [],
@@ -336,13 +336,13 @@ extension MeterTaskQueryWhere
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'meterId',
+              indexName: r'meter_id_index',
               lower: [meterId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'meterId',
+              indexName: r'meter_id_index',
               lower: [],
               upper: [meterId],
               includeUpper: false,

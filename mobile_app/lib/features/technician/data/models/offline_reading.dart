@@ -2,6 +2,7 @@ import 'package:isar/isar.dart';
 
 part 'offline_reading.g.dart';
 
+@Name("OfflineReadingData")
 @collection
 class OfflineReading {
   Id id = Isar.autoIncrement;

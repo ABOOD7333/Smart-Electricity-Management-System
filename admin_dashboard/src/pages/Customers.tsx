@@ -319,6 +319,18 @@ const Customers: React.FC = () => {
       {/* Modal: Add Customer */}
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="إضافة مشترك جديد">
         {formError && <div className="alert-error">{formError}</div>}
+        <div style={{ 
+          marginBottom: '16px', 
+          padding: '12px', 
+          backgroundColor: 'rgba(6, 182, 212, 0.08)', 
+          border: '1px dashed rgba(6, 182, 212, 0.3)', 
+          borderRadius: '8px',
+          fontSize: '13px',
+          color: '#06b6d4',
+          lineHeight: '1.6'
+        }}>
+          💡 <strong>معلومة للمدير:</strong> لا يوجد حقول اسم مستخدم أو كلمة مرور هنا، لأن المشترك يقوم بالتسجيل ذاتياً عبر تطبيق الجوال باستخدام <strong>رقم العداد</strong> الذي يتم ربطه بحسابه.
+        </div>
         <form onSubmit={handleAddSubmit}>
           <div className="form-row">
             <div className="form-group">
