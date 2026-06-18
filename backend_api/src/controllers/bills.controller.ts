@@ -203,9 +203,9 @@ export const recordPayment = async (req: any, res: Response): Promise<void> => {
 
       // تسجيل الدفعة لهذه الفاتورة
       const paymentRes = await client.query(
-        `INSERT INTO payments (bill_id, customer_id, received_by, amount_paid, payment_method, reference_number, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [bill.bill_id, customerId, req.user?.user_id, allocation, payment_method || 'cash', reference_number, notes]
+        `INSERT INTO payments (bill_id, customer_id, received_by, amount_paid, payment_method, reference_number, notes, company_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [bill.bill_id, customerId, req.user?.user_id, allocation, payment_method || 'cash', reference_number, notes, targetBill.company_id]
       );
       paymentsCreated.push(paymentRes.rows[0]);
 
@@ -223,9 +223,9 @@ export const recordPayment = async (req: any, res: Response): Promise<void> => {
       );
       
       const paymentRes = await client.query(
-        `INSERT INTO payments (bill_id, customer_id, received_by, amount_paid, payment_method, reference_number, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [lastBill.bill_id, customerId, req.user?.user_id, remainingPayment, payment_method || 'cash', reference_number, 'دفعة زائدة (رصيد دائن): ' + (notes || '')]
+        `INSERT INTO payments (bill_id, customer_id, received_by, amount_paid, payment_method, reference_number, notes, company_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [lastBill.bill_id, customerId, req.user?.user_id, remainingPayment, payment_method || 'cash', reference_number, 'دفعة زائدة (رصيد دائن): ' + (notes || ''), targetBill.company_id]
       );
       paymentsCreated.push(paymentRes.rows[0]);
     }

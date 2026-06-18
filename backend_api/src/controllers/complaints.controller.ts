@@ -71,10 +71,16 @@ export const createComplaint = async (req: AuthRequest, res: Response): Promise<
   }
 
   try {
+    const companyId = req.user?.company_id || (req as any).tenantId;
+    if (!companyId) {
+      res.status(400).json({ success: false, message: 'تعذر تحديد سياق الشركة لتسجيل الشكوى' });
+      return;
+    }
+
     const result = await query(
-      `INSERT INTO complaints (customer_id, category, subject, description)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [customer_id, category || 'other', subject, description]
+      `INSERT INTO complaints (customer_id, category, subject, description, company_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [customer_id, category || 'other', subject, description, companyId]
     );
 
     const newComplaint = result.rows[0];
@@ -89,6 +95,7 @@ export const createComplaint = async (req: AuthRequest, res: Response): Promise<
 
     res.status(201).json({ success: true, message: 'تم تسجيل الشكوى بنجاح', data: newComplaint });
   } catch (error) {
+    console.error('createComplaint error:', error);
     res.status(500).json({ success: false, message: 'حدث خطأ أثناء إضافة الشكوى' });
   }
 };

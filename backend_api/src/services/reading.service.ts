@@ -116,11 +116,11 @@ export const processReading = async (params: SubmitReadingParams) => {
   // إذا كان هناك شذوذ، يمكننا اختياريًا إضافته إلى جدول تقارير الذكاء الاصطناعي/المراقبة
   if (status === 'pending') {
     await query(
-      `INSERT INTO ai_reports (meter_id, customer_id, analysis_type, anomaly_score, severity, findings)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO ai_reports (meter_id, customer_id, analysis_type, anomaly_score, severity, findings, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         meter_id, meter.customer_id, 'manual_reading_validation', 
-        80, 'high', finalNotes
+        80, 'high', finalNotes, meter.company_id
       ]
     );
   }

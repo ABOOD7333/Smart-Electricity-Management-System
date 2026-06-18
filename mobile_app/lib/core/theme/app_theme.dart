@@ -2,72 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Colors
-  static const Color primaryColor = Color(0xFF00ADB5); // Deep Turquoise / Teal
-  static const Color secondaryColor = Color(0xFF393E46); // Cool Dark Gray
-  static const Color accentColor = Color(0xFFFFD369); // Warm Gold Accent (Premium)
-
-  // Light Theme Colors
-  static const Color lightBg = Color(0xFFF7F9FC);
-  static const Color lightCardBg = Colors.white;
-  static const Color lightTextPrimary = Color(0xFF222831);
-  static const Color lightTextSecondary = Color(0xFF626875);
-
-  // Dark Theme Colors (Banking Level Slate/Navy Dark)
-  static const Color darkBg = Color(0xFF0B141B); // Navy-Black
-  static const Color darkCardBg = Color(0xFF152A38); // Dark Teal-Slate Card
-  static const Color darkTextPrimary = Color(0xFFEEEEEE);
-  static const Color darkTextSecondary = Color(0xFFB0BAC3);
+  // Brand Colors (Premium Space Dark from Web)
+  static const Color accentCyan = Color(0xFF00F2FE); // Neon Cyan
+  static const Color accentBlue = Color(0xFF4FACFE); // Bright Blue
+  static const Color primaryColor = accentCyan;
+  static const Color secondaryColor = Color(0xFF161A29); // Web bg-tertiary
   
-  // Status Colors
-  static const Color successColor = Color(0xFF2EC4B6);
-  static const Color dangerColor = Color(0xFFE71D36);
-  static const Color warningColor = Color(0xFFFF9F1C);
-  static const Color infoColor = Color(0xFF011627);
+  static const Color successColor = Color(0xFF10B981);
+  static const Color warningColor = Color(0xFFF59E0B);
+  static const Color dangerColor = Color(0xFFEF4444);
+
+  // Dark Theme Colors (Matching Web)
+  static const Color darkBg = Color(0xFF080A10); // Web bg-primary
+  static const Color darkCardBg = Color(0xFF0F121D); // Web bg-secondary
+  static const Color darkTextPrimary = Color(0xFFF3F4F6); // Web text-primary
+  static const Color darkTextSecondary = Color(0xFF9CA3AF); // Web text-secondary
 
   static ThemeData get lightTheme {
+    // We force dark mode mostly, but keeping light theme fallback updated just in case
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: primaryColor,
-      scaffoldBackgroundColor: lightBg,
-      cardTheme: CardTheme(
-        color: lightCardBg,
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+      scaffoldBackgroundColor: const Color(0xFFF7F9FC),
       textTheme: GoogleFonts.cairoTextTheme().copyWith(
-        titleLarge: GoogleFonts.cairo(
-          color: lightTextPrimary,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        ),
-        titleMedium: GoogleFonts.cairo(
-          color: lightTextPrimary,
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
-        ),
-        bodyLarge: GoogleFonts.cairo(
-          color: lightTextPrimary,
-          fontSize: 14,
-        ),
-        bodyMedium: GoogleFonts.cairo(
-          color: lightTextSecondary,
-          fontSize: 12,
-        ),
+        titleLarge: GoogleFonts.cairo(color: const Color(0xFF111827), fontWeight: FontWeight.bold, fontSize: 20),
+        titleMedium: GoogleFonts.cairo(color: const Color(0xFF111827), fontWeight: FontWeight.w600, fontSize: 16),
+        bodyLarge: GoogleFonts.cairo(color: const Color(0xFF111827), fontSize: 14),
+        bodyMedium: GoogleFonts.cairo(color: const Color(0xFF4B5563), fontSize: 12),
       ),
       colorScheme: const ColorScheme.light(
         primary: primaryColor,
         secondary: secondaryColor,
-        surface: lightCardBg,
+        surface: Colors.white,
         error: dangerColor,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: lightBg,
-        elevation: 0,
-        iconTheme: IconThemeData(color: lightTextPrimary),
-        centerTitle: true,
       ),
     );
   }
@@ -80,9 +48,12 @@ class AppTheme {
       scaffoldBackgroundColor: darkBg,
       cardTheme: CardTheme(
         color: darkCardBg,
-        elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0x0AFFFFFF), width: 1), // subtle glass border
+        ),
       ),
       textTheme: GoogleFonts.cairoTextTheme().copyWith(
         titleLarge: GoogleFonts.cairo(
@@ -116,6 +87,15 @@ class AppTheme {
         iconTheme: IconThemeData(color: darkTextPrimary),
         centerTitle: true,
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor, // fallback
+          foregroundColor: const Color(0xFF05070A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 }
+

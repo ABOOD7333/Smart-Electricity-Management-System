@@ -118,21 +118,28 @@ export const createMeter = async (req: any, res: Response): Promise<void> => {
     return;
   }
 
+  // التحقق من وجود company_id
+  const companyId = req.tenantId;
+  if (!companyId) {
+    res.status(400).json({ success: false, message: 'تعذر تحديد سياق الشركة' });
+    return;
+  }
+
   try {
-    // التحقق من عدم تكرار رقم العداد
-    const existing = await query('SELECT meter_id FROM meters WHERE meter_number = $1', [meter_number]);
+    // التحقق من عدم تكرار رقم العداد داخل نفس الشركة
+    const existing = await query('SELECT meter_id FROM meters WHERE meter_number = $1 AND company_id = $2', [meter_number, companyId]);
     if (existing.rows.length > 0) {
-      res.status(409).json({ success: false, message: `رقم العداد ${meter_number} مسجل مسبقاً` });
+      res.status(409).json({ success: false, message: `رقم العداد ${meter_number} مسجل مسبقاً في هذه الشركة` });
       return;
     }
 
     const result = await query(
       `INSERT INTO meters (meter_number, customer_id, cabinet_name, zone_id,
-        meter_brand, meter_type, installation_date, gps_latitude, gps_longitude, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        meter_brand, meter_type, installation_date, gps_latitude, gps_longitude, notes, company_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
       [meter_number, customer_id, cabinet_name, zone_id,
-       meter_brand, meter_type, installation_date, gps_latitude, gps_longitude, notes]
+       meter_brand, meter_type, installation_date, gps_latitude, gps_longitude, notes, companyId]
     );
 
     res.status(201).json({
@@ -141,6 +148,7 @@ export const createMeter = async (req: any, res: Response): Promise<void> => {
       data: result.rows[0],
     });
   } catch (error) {
+    console.error('createMeter error:', error);
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 };

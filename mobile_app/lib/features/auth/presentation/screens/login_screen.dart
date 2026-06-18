@@ -137,17 +137,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
+          // Background gradient to match Web Dashboard (Radial glows)
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.darkBg,
-                  Color(0xFF0F2B3E),
-                  Color(0xFF071F2E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+            color: AppTheme.darkBg,
+          ),
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.accentBlue.withValues(alpha: 0.15),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.accentCyan.withValues(alpha: 0.15),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
@@ -179,10 +203,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.bolt_rounded,
-                            size: 62,
-                            color: AppTheme.primaryColor,
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [AppTheme.accentBlue, AppTheme.accentCyan],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds),
+                            child: const Icon(
+                              Icons.bolt_rounded,
+                              size: 62,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       )
@@ -527,18 +558,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ElevatedButton(
                         onPressed: authState.isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              AppTheme.primaryColor.withValues(alpha: 0.5),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 0), // handle padding in ink
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 8,
-                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+                          shadowColor: AppTheme.accentCyan.withValues(alpha: 0.3),
                         ),
-                        child: authState.isLoading
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.accentBlue, AppTheme.accentCyan],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: authState.isLoading
                             ? const SizedBox(
                                 height: 22,
                                 width: 22,
@@ -553,7 +592,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                      ).animate().fade(delay: 680.ms).scale(),
+                          ),
+                        ),
 
                       const SizedBox(height: 16),
 

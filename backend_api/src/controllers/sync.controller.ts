@@ -49,15 +49,16 @@ export const syncOfflineData = async (req: AuthRequest, res: Response): Promise<
         try {
           await client.query(
             `INSERT INTO payments 
-              (bill_id, customer_id, received_by, amount_paid, payment_method, payment_date)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
+              (bill_id, customer_id, received_by, amount_paid, payment_method, payment_date, company_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
               payment.bill_id, 
               payment.customer_id, 
               user_id, 
               payment.amount_paid, 
               payment.payment_method || 'cash', 
-              payment.payment_date || new Date()
+              payment.payment_date || new Date(),
+              req.user?.company_id || (req as any).tenantId
             ]
           );
           syncResults.payments.success++;

@@ -1,9 +1,9 @@
 import { query } from '../database/connection';
 
 export const generateBillForReading = async (reading_id: string, user_id: string) => {
-  // 1. جلب القراءة والعداد والمشترك
+  // 1. جلب القراءة والعداد والمشترك مع معرف الشركة
   const readingResult = await query(
-    `SELECT mr.*, m.customer_id, c.customer_type
+    `SELECT mr.*, m.customer_id, c.customer_type, m.company_id
      FROM meter_readings mr
      JOIN meters m ON mr.meter_id = m.meter_id
      JOIN customers c ON m.customer_id = c.customer_id
@@ -29,12 +29,12 @@ export const generateBillForReading = async (reading_id: string, user_id: string
 
   const consumption = parseFloat(reading.consumption);
   
-  // 2. حساب قيمة الاستهلاك بناءً على الشرائح
+  // 2. حساب قيمة الاستهلاك بناءً على الشرائح والشركة المستأجرة
   const tariffResult = await query(
     `SELECT * FROM tariff_rates 
-     WHERE customer_type = $1 AND is_active = TRUE
+     WHERE customer_type = $1 AND company_id = $2 AND is_active = TRUE
      ORDER BY min_kwh ASC`,
-    [reading.customer_type]
+    [reading.customer_type, reading.company_id]
   );
 
   let consumption_value = 0;
@@ -62,7 +62,7 @@ export const generateBillForReading = async (reading_id: string, user_id: string
     `SELECT COALESCE(SUM(balance_due), 0) as total_arrears
      FROM bills
      WHERE customer_id = $1 AND status != 'paid' AND status != 'cancelled'`,
-    [reading.customer_id]
+     [reading.customer_id]
   );
   const arrears = parseFloat(arrearsResult.rows[0].total_arrears);
 
@@ -81,8 +81,8 @@ export const generateBillForReading = async (reading_id: string, user_id: string
     `INSERT INTO bills 
       (invoice_number, customer_id, meter_id, reading_id, generated_by, 
        billing_cycle, period_from, period_to, previous_reading, current_reading, 
-       consumption_kwh, consumption_value, services_fees, arrears, total_amount, due_date)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
+       consumption_kwh, consumption_value, services_fees, arrears, total_amount, due_date, company_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
     [
       invoice_number,
       reading.customer_id,
@@ -99,7 +99,8 @@ export const generateBillForReading = async (reading_id: string, user_id: string
       services_fees,
       arrears,
       total_amount,
-      new Date(new Date().getTime() + 15 * 24 * 60 * 60 * 1000) // بعد 15 يوم
+      new Date(new Date().getTime() + 15 * 24 * 60 * 60 * 1000), // بعد 15 يوم
+      reading.company_id
     ]
   );
 
