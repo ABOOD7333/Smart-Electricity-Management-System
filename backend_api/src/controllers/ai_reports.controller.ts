@@ -5,7 +5,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 // جلب جميع التقارير
 export const getAIReports = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const companyId = req.tenantId;
+    const companyId = req.user?.company_id;
     const result = await query(
       `SELECT r.*, m.meter_number, c.full_name as customer_name
        FROM ai_reports r
@@ -32,7 +32,7 @@ export const createAIReport = async (req: AuthRequest, res: Response): Promise<v
   }
 
   try {
-    let companyId = req.tenantId || req.user?.company_id;
+    let companyId = req.user?.company_id;
 
     if (!companyId && (meter_id || customer_id)) {
       if (meter_id) {
