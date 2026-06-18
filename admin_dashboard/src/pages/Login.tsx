@@ -1,7 +1,9 @@
+// Admin Dashboard Login — v2.0 — SEMS Premium Dark UI
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, ShieldCheck } from 'lucide-react';
 import client from '../api/client';
+
 
 interface Company {
   company_id: string;
